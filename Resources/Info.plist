@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>wifi-logger</string>
+    <key>CFBundleIdentifier</key>
+    <string>local.wifi-logger</string>
+    <key>CFBundleName</key>
+    <string>WiFi Logger</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.14</string>
+    <key>CFBundleVersion</key>
+    <string>1.0.14</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>NSLocationUsageDescription</key>
+    <string>WiFi Logger использует это разрешение для чтения имени сети Wi-Fi и идентификатора точки доступа.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>WiFi Logger использует это разрешение для чтения имени сети Wi-Fi и идентификатора точки доступа.</string>
+</dict>
+</plist>

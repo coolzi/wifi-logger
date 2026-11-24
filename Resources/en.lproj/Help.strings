@@ -1,0 +1,96 @@
+/* Topics and sidebar */
+"Запись" = "Recording";
+"Навигация по графику" = "Chart Navigation";
+"Сигнал и обрывы" = "Signal and Outages";
+"Модуляция и скорость" = "Modulation and Rate";
+"Сохранение CSV" = "Saving CSV Files";
+"Имя сети и BSSID" = "SSID and BSSID";
+"Имена точек доступа" = "Access Point Names";
+"Разделы справки" = "Help Topics";
+
+/* Recording */
+"Записать замеры" = "Record Wi-Fi Measurements";
+"Нажмите **«Начать запись»** или **⌘R**. Приложение делает замер Wi-Fi примерно каждые 250 мс." = "Click **Start Recording** or press **⌘R**. The app takes a Wi-Fi measurement about every 250 ms.";
+"**«Приостановить запись»** сохраняет накопленные замеры и снимки в окне. **«Продолжить запись»** добавляет данные к той же сессии." = "**Pause Recording** keeps the measurements and snapshots collected so far in the window. **Resume Recording** adds data to the same session.";
+
+/* Chart navigation */
+"Найти момент на графике" = "Find a Time on the Chart";
+"В меню **«Диапазон»** выберите от 30 с до 15 мин. На вкладке **«Замеры Wi-Fi»** стрелки и ползунок **«Окно графика»** под графиком сдвигают видимый период. Они появляются, когда в записи несколько замеров и часть из них находится за пределами видимого диапазона." = "In **Time Range**, choose a span from 30 seconds to 15 minutes. On the **Wi-Fi Measurements** tab, use the arrows and the **Chart Window** slider below the chart to move the visible window. These controls appear when there are multiple measurements and some fall outside the visible range.";
+"Чтобы выбрать момент, щёлкните по графику или по строке в **«Событиях»**. **«Выбранный момент»** вверху окна и диапазон сохраняются при смене вкладки. Если ближайший замер или снимок получен в другое время, оно указано рядом с его данными. **«К последним данным»** вернёт обе вкладки к концу записи." = "To select a time, click the chart or a row in **Events**. The **Selected Time** at the top of the window and the time range carry over when you switch tabs. If the nearest measurement or snapshot was taken at a different time, its time appears next to the data. **Back to Latest** returns both tabs to the end of the recording.";
+"С клавиатуры" = "Use the Keyboard";
+"Для выбора с клавиатуры нажимайте **Tab**, пока фокус не окажется на графике. **←** и **→** перебирают замеры и снимки в видимом диапазоне. На графике NSS они переходят между доступными показаниями. **Enter** выбирает показанный замер, снимок или показание." = "Press **Tab** until the chart has focus. Press **←** or **→** to move between measurements or snapshots in the visible range. On the NSS chart, the arrow keys move through available readings. Press **Enter** to select the measurement, snapshot, or reading shown.";
+
+/* Signal and outages */
+"Понять сигнал и обрывы" = "Understand Signal and Outages";
+"RSSI — уровень сигнала. Значение −55 дБм означает более сильный сигнал, чем −70 дБм. Чем выше SNR, тем лучше сигнал различим на фоне шума. В режимах **«Сигнал и шум»** и **SNR** пороги качества доступны под графиком в разделе **«Как читать цвета»**." = "RSSI measures received signal strength. A reading of −55 dBm indicates a stronger signal than −70 dBm. A higher SNR means the signal stands out more clearly from the noise. In **Signal and Noise** and **SNR**, find the quality thresholds in **Understanding the Colors** below the chart.";
+"В **«Событиях»** видны обрывы и восстановления связи, изменения номера, диапазона или ширины канала. Приложение отмечает смену точки доступа, когда у соседних замеров подключения совпадает SSID и меняется BSSID." = "**Events** lists connection losses and recoveries, along with changes to the channel number, band, or width. The app records an access point change when consecutive connected measurements have the same SSID and different BSSIDs.";
+
+/* Modulation */
+"Сравнить модуляцию и скорость" = "Compare Modulation and Transmit Rate";
+"Откройте вкладку **«Снимки модуляции»** и выберите точку на графике MCS, скорости передачи или NSS. Снимки собираются отдельными запросами. macOS может сообщить MCS, режим Wi-Fi, канал и скорость передачи по соединению Wi-Fi." = "Open **Modulation Snapshots** and select a point on the MCS, transmit rate, or NSS chart. Each snapshot comes from a separate request. macOS can report the MCS, Wi-Fi mode, channel, and Wi-Fi link transmit rate.";
+"Для известных сочетаний MCS и режима Wi-Fi приложение показывает модуляцию и кодовую скорость. Для 1024-QAM один символ на поднесущей кодирует 10 бит в одном пространственном потоке. При тех же условиях больше бит на символ позволяют передавать данные быстрее. Цвет точки MCS показывает тип модуляции. Цвета можно сверить в **«Как читать цвета MCS»** под графиками. Полоса **«Запрос macOS»** показывает интервал от начала запроса до ответа." = "For recognized combinations of MCS and Wi-Fi mode, the app shows the modulation and coding rate. With 1024-QAM, one symbol on a subcarrier encodes 10 bits in one spatial stream. Under the same conditions, more bits per symbol allow a higher data rate. Each MCS point is colored by modulation type. See **Understanding MCS Colors** below the charts. The **macOS Request** bar shows the time from the beginning of the request to the response.";
+"Когда накопится хотя бы два снимка, переключайтесь между ними стрелками или ползунком **«Выбор снимка»**. VoiceOver озвучивает у ползунка время ответа по снимку." = "Once at least two snapshots are available, use the arrows or the **Snapshot Selection** slider to switch between them. VoiceOver reads the snapshot response time for the slider.";
+"**NSS (macOS)** — число пространственных потоков. Под числом указано время отдельного ответа macOS. Если число потоков недоступно или приложение обнаружило смену точки доступа, в карточке будет прочерк, а на графике — пропуск." = "**NSS (macOS)** is the number of spatial streams. The time below the number is when macOS returned that reading in a separate response. If the reading is unavailable or the app detected an access point change, the card shows a dash and the chart shows a gap.";
+
+/* Export */
+"Сохранить запись" = "Save a Recording";
+"В окне записи откройте **«Сохранить CSV»**. Пункты **«Замеры Wi-Fi…»** и **«Снимки модуляции…»** сохраняют данные в отдельные файлы. Экспорт работает во время записи. В файл попадут данные, накопленные к моменту подтверждения сохранения." = "In the recording window, open **Save CSV**. **Wi-Fi Measurements…** and **Modulation Snapshots…** save their data to separate files. You can export while recording. Each file includes the data collected up to the moment you confirm the save.";
+"Чтобы сохранить всю историю перед закрытием окна или сбросом через **«Новая запись…»**, приостановите запись и сохраните каждый доступный CSV. Пауза фиксирует конец записи для обоих файлов. Время последнего замера и последнего снимка может различаться." = "To save the full history before closing the window or choosing **New Recording…**, click **Pause Recording** and save each available CSV. Pausing fixes the end of the recording for both files. The last measurement and the last snapshot may have different timestamps.";
+
+/* Network names and location permission */
+"Показать имя сети и BSSID" = "Show the Network Name and BSSID";
+"При подключении к Wi-Fi имя сети и адрес точки доступа (BSSID) могут быть скрыты. На вкладке **«Замеры Wi-Fi»** нажмите **«Разрешить»**, если приложение предлагает доступ. После отказа откройте **«Системные настройки» → «Конфиденциальность и безопасность» → «Службы геолокации»** и разрешите доступ Wi-Fi Logger. Если запись на паузе, продолжите её, чтобы обновить поля." = "While Wi-Fi is connected, macOS may hide the network name and access point address (BSSID). On **Wi-Fi Measurements**, click **Allow** if the app offers to request access. If you previously denied access, open **System Settings → Privacy & Security → Location Services** and allow Wi-Fi Logger. If recording is paused, click **Resume Recording** to update the fields.";
+
+/* Access point directory */
+"Загрузить имена точек доступа" = "Import Access Point Names";
+"Подготовьте CSV" = "Prepare the CSV";
+"bssid,ap_name\n02:11:22:33:44:55,Кабинет 301\n0211-2233-4466,\"Холл, зона \"\"А\"\" у входа\"" = "bssid,ap_name\n02:11:22:33:44:55,Room 301\n0211-2233-4466,\"Lobby, zone \"\"A\"\"\"";
+"Сохраните файл в кодировке UTF-8. В первой строке укажите `bssid,ap_name`. Добавьте хотя бы одну запись. В каждой записи укажите BSSID (MAC-адрес точки доступа) и её непустое имя через запятую. Имя должно быть на одной строке, без табуляции и других управляющих символов." = "Save the file as UTF-8. Enter `bssid,ap_name` on the first line and add at least one entry. Enter the BSSID (the access point’s MAC address) and a nonempty name, separated by a comma. Keep each name on one line and omit tabs and other control characters.";
+"BSSID можно записать с двоеточиями или в формате Huawei с дефисами. Регистр букв в адресе не важен. Одно имя можно указать для нескольких BSSID. Если один адрес встречается несколько раз, у него должно быть одно и то же имя." = "Write BSSIDs with colons or use the Huawei format with hyphens. The letter case of the address does not matter. Several BSSIDs can share a name. If an address appears more than once, use the same name each time.";
+"Если в имени есть запятая или двойная кавычка, заключите имя в двойные кавычки. Каждую двойную кавычку внутри имени запишите дважды." = "If a name contains a comma or double quotes, enclose it in double quotes. Write each double quote inside the name twice.";
+"Загрузите справочник" = "Load the Directory";
+"Выберите **«Файл» → «Импорт имён точек доступа…»** и откройте CSV. Сверьте число уникальных имён и адресов BSSID. При первой загрузке нажмите **«Загрузить»**. Если приложение указало номер строки с ошибкой, исправьте её и откройте файл снова." = "Choose **File → Import Access Point Names…** and open the CSV. Check the counts of unique names and BSSIDs. When importing for the first time, click **Load**. If the app reports a line number for an error, fix that line and reopen the file.";
+"При повторном импорте диалог покажет, сколько BSSID добавится, потеряет имя или сменит его. Кнопка **«Заменить»** применяет новый список целиком. Чтобы сохранить нужные имена, перенесите их в новый CSV вместе с BSSID." = "When you import again, the dialog shows how many BSSIDs will be added, lose their name, or get a different name. **Replace** applies the entire new list. To keep existing names, include them with their BSSIDs in the new CSV.";
+"Имя из справочника видно под BSSID в замере и рядом с соответствующим адресом в событии смены точки. Справочник доступен после перезапуска." = "A name from the directory appears below its BSSID in a measurement and next to the matching address in an access point change event. The directory remains available after you restart the app.";
+
+/* CSV reference */
+"Колонки CSV замеров Wi-Fi" = "Wi-Fi Measurements CSV Columns";
+"Развёрнуто" = "Expanded";
+"Свёрнуто" = "Collapsed";
+"Поля замера" = "Measurement Fields";
+"В файле одна строка на замер. Если состояние отличается от `подключено`, все поля от `ssid` до `tx_rate_mbps` пустые." = "The file contains one row per measurement. Fields from `ssid` through `tx_rate_mbps` are populated only when `state` is `подключено` (connected) and the readings are available.";
+"Календарное время замера в ISO 8601 с миллисекундами и смещением часового пояса. Всегда заполнено." = "Wall-clock time of the measurement in ISO 8601, with milliseconds and a time zone offset. Always present.";
+"Состояние Wi-Fi. Возможные значения — `подключено`, `нет подключения`, `Wi-Fi выключен`, `состояние неизвестно`. Всегда заполнено." = "Wi-Fi state. The file uses `подключено` (connected), `нет подключения` (disconnected), `Wi-Fi выключен` (Wi-Fi off), or `состояние неизвестно` (unknown). Always present.";
+"Имя сети, текст. Пусто, если имя недоступно, например macOS скрыла его из-за настроек геолокации. Экспорт может добавить начальный апостроф для защиты от формул в таблицах." = "Network name as text. Blank if the name is unavailable, for example when macOS hides it because of Location Services settings. The export can add a leading apostrophe to keep spreadsheet apps from evaluating the name as a formula.";
+"MAC-адрес точки доступа, текст. Пусто, если адрес недоступен, например macOS скрыла его из-за настроек геолокации." = "Access point MAC address as text. Blank if the address is unavailable, for example when macOS hides it because of Location Services settings.";
+"Уровень принятого сигнала (RSSI), дБм. Пусто, если macOS не дала показание или вернула 0." = "Received signal strength (RSSI), in dBm. Blank if macOS reports zero or supplies no reading.";
+"Уровень шума, дБм. Пусто, если macOS не дала показание или вернула 0." = "Noise level, in dBm. Blank if macOS reports zero or supplies no reading.";
+"Отношение сигнала к шуму, дБ. Приложение вычитает уровень шума из уровня сигнала. Пусто, если нет одного из показаний." = "Signal-to-noise ratio, in dB. The app subtracts the noise level from the signal strength. Blank if either reading is missing.";
+"Частотный диапазон, текст с единицей ГГц. Пусто, если диапазон неизвестен." = "Frequency band as text in GHz (written `ГГц` in the file). Blank if the band is unknown.";
+"Номер канала. Пусто, если macOS не сообщила положительный номер." = "Channel number. Blank if macOS supplies no positive channel number.";
+"Ширина канала, МГц. Пусто, если ширина недоступна или приложение её не распознало." = "Channel width, in MHz. Blank if the width is unavailable or unrecognized.";
+"Режим Wi-Fi по стандарту 802.11, например `802.11ax`. Пусто, если режим недоступен или приложение его не распознало." = "802.11 Wi-Fi mode, for example `802.11ax`. Blank if the mode is unavailable or unrecognized.";
+"Скорость передачи по радиосоединению Wi-Fi (PHY), Мбит/с. Пусто, если macOS не сообщила конечное положительное значение." = "Wi-Fi radio link transmit rate (PHY), in Mbps. Blank if macOS supplies no finite positive value.";
+"Смена канала" = "Channel Changes";
+"Приложение сравнивает два соседних замера с подключением в одном сегменте. Если номера каналов известны, событием считается смена номера, известного диапазона или известной ширины." = "The app compares two consecutive connected measurements in the same segment. If both channel numbers are known, a change in the number, a known band, or a known width counts as an event.";
+"Признак смены канала. `1` в строке события, `0` в остальных строках. Всегда заполнено." = "Channel change flag. `1` on event rows and `0` on all other rows. Always present.";
+"Диапазон в предыдущем замере, текст с единицей ГГц. Пусто вне события или если прежний диапазон неизвестен." = "Frequency band in the previous measurement as text in GHz (written `ГГц` in the file). Blank outside a channel change event or if the previous band is unknown.";
+"Номер канала в предыдущем замере. Пусто вне события." = "Channel number in the previous measurement. Blank outside a channel change event.";
+"Ширина канала в предыдущем замере, МГц. Пусто вне события или если прежняя ширина неизвестна." = "Channel width in the previous measurement, in MHz. Blank outside a channel change event or if the previous width is unknown.";
+"Сводка обрывов" = "Outage Summary";
+"Итоги на момент сохранения повторяются в каждой строке. В длительность входит интервал после замера без связи или с выключенным Wi-Fi, если следующий замер в том же сегменте и его состояние известно. Если запись началась без связи, длительность может быть больше нуля при нулевом счётчике обрывов." = "Every row repeats the totals at the time of export. The duration includes the interval after a disconnected or Wi-Fi-off measurement if the next measurement is in the same segment and its state is known. A recording that starts without a connection can have a positive outage duration and zero counted outages.";
+"Число переходов из подключения в отсутствие связи или выключенный Wi-Fi внутри сегмента. Всегда заполнено, при отсутствии переходов — 0." = "Number of transitions from connected to disconnected or Wi-Fi off within a segment. Always present, with `0` when there are no such transitions.";
+"Суммарное наблюдаемое время без связи, с. Всегда заполнено, при отсутствии таких интервалов — 0." = "Total observed time without a connection, in seconds. Always present, with `0` when there are no such intervals.";
+"Самый длительный наблюдаемый период без связи, с. Всегда заполнено, при отсутствии таких интервалов — 0." = "Longest observed period without a connection, in seconds. Always present, with `0` when there are no such intervals.";
+"RSSI и SNR за последние 60 секунд" = "RSSI and SNR over the Last 60 Seconds";
+"Окно отсчитывается назад от последнего замера в файле по монотонному времени. Обе границы входят в окно. Результаты повторяются в каждой строке." = "The window extends back 60 seconds from the last measurement in the file using monotonic time. Both endpoints are included. Every row repeats the results.";
+"Минимальный RSSI в окне, дБм. Пусто, если в окне нет ни одного RSSI." = "Minimum RSSI in the window, in dBm. Blank if the window contains no RSSI readings.";
+"Максимальный RSSI в окне, дБм. Пусто, если в окне нет ни одного RSSI." = "Maximum RSSI in the window, in dBm. Blank if the window contains no RSSI readings.";
+"Разность между максимальным и минимальным RSSI в окне, дБ. Пусто, если показаний RSSI меньше двух." = "Difference between the maximum and minimum RSSI in the window, in dB. Blank if there are fewer than two RSSI readings.";
+"Минимальный SNR в окне, дБ. Пусто, если в окне нет ни одного SNR." = "Minimum SNR in the window, in dB. Blank if the window contains no SNR readings.";
+"Максимальный SNR в окне, дБ. Пусто, если в окне нет ни одного SNR." = "Maximum SNR in the window, in dB. Blank if the window contains no SNR readings.";
+"Разность между максимальным и минимальным SNR в окне, дБ. Пусто, если показаний SNR меньше двух." = "Difference between the maximum and minimum SNR in the window, in dB. Blank if there are fewer than two SNR readings.";
+"Сегмент, время и версия расчёта" = "Segment, Time, and Calculation Version";
+"Номер непрерывного участка записи, начиная с 0. Новый участок начинается после продолжения записи или при интервале между замерами больше 2,5 с либо меньше или равном нулю. Всегда заполнено." = "Number of the continuous recording segment, starting at `0`. A new segment starts when recording resumes or when the gap between measurements exceeds 2.5 seconds or is zero or negative. Always present.";
+"Время замера в секундах от общей точки отсчёта приложения. Идёт во время паузы и сна и не зависит от перевода системных часов. Всегда заполнено." = "Measurement time in seconds from a shared reference point in the app. It advances during pauses and system sleep and is independent of changes to the system clock. Always present.";
+"Номер версии правил расчёта, сейчас `1`. Всегда заполнено." = "Version of the calculation rules, currently `1`. Always present.";
