@@ -33,7 +33,19 @@ Recordings live in memory. You can save a CSV during recording. The file include
 
 macOS may require Location Services permission to expose the network name (SSID) and hardware address of the access point (BSSID). The GUI offers **Allow** when access can be requested. To ask from the command line, pass `--request-location`. These identifiers and measurement timestamps can be present in CSV exports and terminal output. Check them before sharing a file or a log.
 
-Transmit rate is the reported Wi-Fi link rate. Spatial stream counts (NSS) depend on an undocumented CoreWLAN API used by a short-lived helper. The app can continue recording when this reading is unavailable.
+Transmit rate is the reported Wi-Fi link rate.
+
+## Spatial streams (NSS)
+
+Wi-Fi Logger reads NSS by calling the undocumented CoreWLAN selector `numberOfSpatialStreams` on a `CWInterface` instance. A short-lived helper resolves it with `NSSelectorFromString("numberOfSpatialStreams")` and `class_getInstanceMethod`. It checks that the method takes no explicit arguments and returns a 64-bit unsigned integer before calling the implementation.
+
+```swift
+typealias Getter = @convention(c) (AnyObject, Selector) -> UInt
+let getter = unsafeBitCast(method_getImplementation(method), to: Getter.self)
+let count = getter(interface, selector)
+```
+
+The helper has a 750 ms timeout and accepts counts from 1 to 16. If it cannot obtain a count, NSS is shown as missing and recording continues. [NSS helper source](Sources/WiFiLogger/WiFiSpatialStreams.swift)
 
 ## Contributing
 
