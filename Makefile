@@ -3,6 +3,7 @@ COMMAND := $(APP)/Contents/MacOS/wifi-logger
 GUI_APP := .build/WiFiLoggerGUI.app
 GUI_EXECUTABLE := $(GUI_APP)/Contents/MacOS/wifi-logger-app
 GUI_ICON := .build/WiFiLogger.icns
+LOCALIZATIONS := ar bn en es fr hi id pt ru ur zh-Hans
 VERSION := $(shell /usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)
 INSTALLER := dist/WiFi-Logger-$(VERSION)-macOS-arm64.pkg
 
@@ -28,8 +29,11 @@ build: $(GUI_ICON)
 	cp LICENSE "$(APP)/Contents/Resources/"
 	cp LICENSE "$(GUI_APP)/Contents/Resources/"
 	cp "$(GUI_ICON)" "$(GUI_APP)/Contents/Resources/"
-	ditto Resources/en.lproj "$(GUI_APP)/Contents/Resources/en.lproj"
-	ditto Resources/ru.lproj "$(GUI_APP)/Contents/Resources/ru.lproj"
+	@set -e; for language in $(LOCALIZATIONS); do \
+		destination="$(GUI_APP)/Contents/Resources/$$language.lproj"; \
+		mkdir -p "$$destination"; \
+		cp Resources/$$language.lproj/*.strings "$$destination/"; \
+	done
 	codesign --force --sign - --options runtime \
 		--entitlements Resources/Location.entitlements.plist "$(APP)" "$(GUI_APP)"
 	@# Refresh the cached Finder icon after updating the existing bundle.

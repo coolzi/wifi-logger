@@ -21,6 +21,7 @@
 "Чтобы сохранить всю историю, нажмите «Отмена», приостановите запись и выберите нужные пункты в меню «Сохранить CSV»." = "To save the full history, click Cancel, pause the recording, and choose the relevant options under Save CSV.";
 "Чтобы сохранить всю историю, нажмите «Отмена», выберите нужные пункты в меню «Сохранить CSV»." = "To save the full history, click Cancel and choose the relevant options under Save CSV.";
 "Отмена" = "Cancel";
+"OK" = "OK";
 "Сбросить и начать" = "Reset and Start";
 "Сохранение CSV…" = "Saving CSV…";
 "Открыть" = "Open";

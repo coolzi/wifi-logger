@@ -1,0 +1,2 @@
+"NSLocationUsageDescription" = "Wi-Fi Logger 需要定位权限来读取 Wi-Fi 网络名称（SSID）和接入点标识符（BSSID）。";
+"NSLocationWhenInUseUsageDescription" = "Wi-Fi Logger 需要定位权限来读取 Wi-Fi 网络名称（SSID）和接入点标识符（BSSID）。";

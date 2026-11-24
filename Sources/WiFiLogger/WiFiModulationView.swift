@@ -91,6 +91,7 @@ struct WiFiModulationView: View {
                     plot(.spatialStreams, selection: selection, requestBand: requestBand)
                     timeAxis
                 }
+                .environment(\.layoutDirection, .leftToRight)
             } else {
                 ContentUnavailableView("Нет снимков за этот период", systemImage: "waveform.path")
                     .frame(maxWidth: .infinity)
@@ -98,6 +99,7 @@ struct WiFiModulationView: View {
             }
             if lastIndex > 0 {
                 snapshotNavigation(index: index, last: lastIndex)
+                    .environment(\.layoutDirection, .leftToRight)
             } else if index == nil {
                 Button("К снимку") { select(lastIndex) }
             }
@@ -167,7 +169,7 @@ struct WiFiModulationView: View {
                        detail: bits ?? String(localized: "Бит на символ —"))
                     .help("Число кодированных бит на символ одной поднесущей в одном пространственном потоке.")
                 metric(String(localized: "Кодовая скорость"), snapshot.coding,
-                       detail: informationShare ?? String(localized: "Доля бит —"), detailLines: 2)
+                       detail: informationShare ?? String(localized: "Доля бит —"))
                     .contentShape(Rectangle())
                     .onHover { codingHint.isVisible = $0 }
                     .accessibilityHint(Self.codingHelp)
@@ -189,7 +191,7 @@ struct WiFiModulationView: View {
                     }
                     .zIndex(1)
                 metric(Lane.rate.title, snapshot.transmitRateMbps.map { $0.formatted(Self.rateFormat) })
-                metric("NSS (macOS)", snapshot.spatialStreams.map { String($0.count) }, detail: nssTime, detailLines: 2)
+                metric("NSS (macOS)", snapshot.spatialStreams.map { String($0.count) }, detail: nssTime)
                     .help("Время отдельного ответа macOS. Если BSSID недоступен, совпадение точки доступа проверить нельзя.")
             }
             Text("Запрос macOS \(start) → \(end)")
@@ -203,8 +205,7 @@ struct WiFiModulationView: View {
     private static let rateFormat = FloatingPointFormatStyle<Double>.number.locale(locale)
         .precision(.fractionLength(0...1))
 
-    private func metric(_ title: String, _ value: String?, accent: Color? = nil, detail: String? = nil,
-                        detailLines: Int = 1) -> some View {
+    private func metric(_ title: String, _ value: String?, accent: Color? = nil, detail: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title).font(.caption).foregroundStyle(.secondary)
             Text(value ?? "—")
@@ -216,10 +217,9 @@ struct WiFiModulationView: View {
                 Text(detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(detailLines)
-                    .minimumScaleFactor(0.85)
             }
         }
+        .fixedSize(horizontal: false, vertical: true)
         .wifiReadoutTile(tint: accent)
         .accessibilityElement(children: .combine)
     }

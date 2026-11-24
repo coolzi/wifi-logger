@@ -5,11 +5,13 @@ import UniformTypeIdentifiers
 
 struct WiFiLoggerApp: App {
     @Environment(\.openWindow) private var openWindow
+    private let interfaceDirection: LayoutDirection = WiFiInterfaceLocale.isRightToLeft ? .rightToLeft : .leftToRight
 
     var body: some Scene {
         Window("Wi-Fi Logger", id: "logger") {
             WiFiLoggerWindow()
                 .frame(minWidth: 680, minHeight: 470)
+                .environment(\.layoutDirection, interfaceDirection)
         }
         .defaultSize(width: 800, height: 980)
         .commands {
@@ -24,6 +26,7 @@ struct WiFiLoggerApp: App {
         Window(WiFiLoggerHelp.title, id: WiFiLoggerHelp.windowID) {
             WiFiLoggerHelp()
                 .frame(minWidth: 620, minHeight: 360)
+                .environment(\.layoutDirection, interfaceDirection)
         }
         .defaultSize(width: 760, height: 530)
     }
@@ -362,7 +365,7 @@ struct WiFiLoggerWindow: View {
             alert.alertStyle = .warning
             alert.messageText = String(localized: "Не удалось импортировать имена точек")
             alert.informativeText = error.localizedDescription
-            alert.addButton(withTitle: "OK")
+            alert.addButton(withTitle: String(localized: "OK"))
             _ = await alert.beginSheetModal(for: window)
         }
     }
@@ -529,9 +532,11 @@ struct WiFiLoggerWindow: View {
                 .frame(height: 218)
                 // Swift Charts centers the last time label when its tick is near the right edge.
                 .padding(.trailing, 16)
+                .environment(\.layoutDirection, .leftToRight)
             }
             if session.samples.count > max(1, range.count) {
                 chartNavigation(in: range)
+                    .environment(\.layoutDirection, .leftToRight)
             } else if range.isEmpty, !session.samples.isEmpty {
                 Button("К замеру") { moveChart(to: 0, in: snapshot.id) }
             }

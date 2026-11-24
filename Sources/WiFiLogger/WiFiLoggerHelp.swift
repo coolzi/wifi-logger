@@ -39,6 +39,8 @@ struct WiFiLoggerHelp: View {
             List(Topic.allCases, id: \.self, selection: topicSelection) { topic in
                 Label {
                     Text(LocalizedStringKey(topic.rawValue), tableName: "Help")
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 } icon: {
                     Image(systemName: topic.symbol)
                 }
@@ -210,6 +212,7 @@ struct WiFiLoggerHelp: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
                     .background(.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+                    .environment(\.layoutDirection, .leftToRight)
                 paragraph("""
                     BSSID можно записать с двоеточиями или в формате Huawei с дефисами. Регистр букв в адресе не важен. \
                     Одно имя можно указать для нескольких BSSID. Если один адрес встречается несколько раз, \

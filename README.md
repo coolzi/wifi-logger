@@ -17,7 +17,7 @@ make
 open .build/WiFiLoggerGUI.app
 ```
 
-Click **Start Recording**. Open **Wi-Fi Logger Help** from the **Help** menu for chart navigation, CSV columns and the access point import format. The app supports English and Russian. Choose a language for Wi-Fi Logger under **System Settings → General → Language & Region → Applications**, then reopen the app. [Apple's language settings guide](https://support.apple.com/guide/mac-help/change-the-system-language-mh26684/mac)
+Click **Start Recording**. Open **Wi-Fi Logger Help** from the **Help** menu for chart navigation, CSV columns and the access point import format. The app supports Arabic, Bengali, English, French, Hindi, Indonesian, Portuguese, Russian, Simplified Chinese, Spanish, and Urdu. Choose a language for Wi-Fi Logger under **System Settings → General → Language & Region → Applications**, then reopen the app. [Apple's language settings guide](https://support.apple.com/guide/mac-help/change-the-system-language-mh26684/mac)
 
 The command-line app prints approximately one measurement per second. Stop it with Ctrl+C.
 

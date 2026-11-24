@@ -1,0 +1,2 @@
+"NSLocationUsageDescription" = "Wi-Fi Logger स्थान की अनुमति का इस्तेमाल Wi-Fi नेटवर्क का नाम (SSID) और ऐक्सेस पॉइंट की पहचान (BSSID) पढ़ने के लिए करता है।";
+"NSLocationWhenInUseUsageDescription" = "Wi-Fi Logger स्थान की अनुमति का इस्तेमाल Wi-Fi नेटवर्क का नाम (SSID) और ऐक्सेस पॉइंट की पहचान (BSSID) पढ़ने के लिए करता है।";
