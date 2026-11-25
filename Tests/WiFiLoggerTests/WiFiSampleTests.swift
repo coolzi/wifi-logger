@@ -4,18 +4,18 @@ import Testing
 @testable import WiFiLogger
 
 @Test func generationLabelsMatchTheNegotiatedModeAndBand() {
-    let cases: [(String?, String?, String?)] = [
-        ("802.11n", "2,4 ГГц", "Wi-Fi 4"),
-        ("802.11ac", "5 ГГц", "Wi-Fi 5"),
-        ("802.11ax", "2,4 ГГц", "Wi-Fi 6"),
-        ("802.11ax", "5 ГГц", "Wi-Fi 6"),
-        ("802.11ax", "6 ГГц", "Wi-Fi 6E"),
+    let cases: [(String?, WiFiBand?, String?)] = [
+        ("802.11n", .ghz2Point4, "Wi-Fi 4"),
+        ("802.11ac", .ghz5, "Wi-Fi 5"),
+        ("802.11ax", .ghz2Point4, "Wi-Fi 6"),
+        ("802.11ax", .ghz5, "Wi-Fi 6"),
+        ("802.11ax", .ghz6, "Wi-Fi 6E"),
         ("802.11ax", nil, "Wi-Fi 6"),
-        ("802.11be", "6 ГГц", "Wi-Fi 7"),
-        ("802.11be", "5 ГГц", "Wi-Fi 7"),
-        ("802.11a", "5 ГГц", "Wi-Fi (a)"),
-        ("802.11b", "2,4 ГГц", "Wi-Fi (b)"),
-        ("802.11g", "2,4 ГГц", "Wi-Fi (g)"),
+        ("802.11be", .ghz6, "Wi-Fi 7"),
+        ("802.11be", .ghz5, "Wi-Fi 7"),
+        ("802.11a", .ghz5, "Wi-Fi (a)"),
+        ("802.11b", .ghz2Point4, "Wi-Fi (b)"),
+        ("802.11g", .ghz2Point4, "Wi-Fi (g)"),
         ("future mode", nil, "future mode"), (nil, nil, nil),
     ]
     for (mode, band, label) in cases {
@@ -41,7 +41,7 @@ import Testing
         state: .connected,
         measurements: WiFiMeasurements(
             ssid: "Home", bssid: "02:00:00:00:00:01", rssi: -61, noise: -95,
-            channel: WiFiChannel(band: "5 ГГц", number: 36, width: 80),
+            channel: WiFiChannel(band: .ghz5, number: 36, width: 80),
             phyMode: "802.11ac", transmitRate: 866
         )
     )

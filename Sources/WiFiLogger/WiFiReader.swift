@@ -4,6 +4,13 @@ import Foundation
 import SystemConfiguration
 
 struct WiFiReader {
+    struct Association: Equatable {
+        let state: WiFiState
+        var ssid: String? = nil
+        var bssid: String? = nil
+        var ssidData: Data? = nil
+    }
+
     private let client = CWWiFiClient.shared()
     private let store = SCDynamicStoreCreate(nil, "wifi-logger" as CFString, nil, nil)
 
@@ -25,27 +32,38 @@ struct WiFiReader {
                               state: .unknown, measurements: WiFiMeasurements())
         }
 
-        let state = WiFiState(
-            powerOn: interface.powerOn(),
-            linkActive: linkActive(for: name),
-            stationMode: interface.interfaceMode() == .station
-        )
-        guard state == .connected else {
-            return WiFiSample(time: time, monotonicTime: monotonicTime,
-                              state: state, measurements: WiFiMeasurements())
+        return Self.sample(time: time, monotonicTime: monotonicTime) {
+            let state = WiFiState(powerOn: interface.powerOn(), linkActive: linkActive(for: name),
+                                  stationMode: interface.interfaceMode() == .station)
+            guard state == .connected else { return Association(state: state) }
+            return Association(state: state, ssid: interface.ssid(), bssid: interface.bssid(),
+                               ssidData: interface.ssidData())
+        } readRadio: {
+            WiFiMeasurements(rssi: interface.rssiValue(),
+                             noise: interface.noiseMeasurement(),
+                             channel: interface.wlanChannel().map(WiFiChannel.init),
+                             phyMode: phyModeLabel(interface.activePHYMode()),
+                             transmitRate: interface.transmitRate())
         }
+    }
 
-        let measurements = WiFiMeasurements(
-            ssid: interface.ssid(),
-            bssid: interface.bssid(),
-            rssi: interface.rssiValue(),
-            noise: interface.noiseMeasurement(),
-            channel: interface.wlanChannel().map(WiFiChannel.init),
-            phyMode: phyModeLabel(interface.activePHYMode()),
-            transmitRate: interface.transmitRate(),
-            ssidData: interface.ssidData()
-        )
-        return WiFiSample(time: time, monotonicTime: monotonicTime, state: state, measurements: measurements)
+    static func sample(time: Date, monotonicTime: TimeInterval, readAssociation: () -> Association,
+                       readRadio: () -> WiFiMeasurements) -> WiFiSample {
+        let association = readAssociation()
+        guard association.state == .connected else {
+            return WiFiSample(time: time, monotonicTime: monotonicTime,
+                              state: association.state, measurements: WiFiMeasurements())
+        }
+        var measurements = readRadio()
+        // A roam can happen between the synchronous CoreWLAN getters.
+        guard readAssociation() == association else {
+            return WiFiSample(time: time, monotonicTime: monotonicTime,
+                              state: .unknown, measurements: WiFiMeasurements())
+        }
+        measurements.ssid = association.ssid
+        measurements.bssid = association.bssid
+        measurements.ssidData = association.ssidData
+        return WiFiSample(time: time, monotonicTime: monotonicTime, state: .connected, measurements: measurements)
     }
 
     private func linkActive(for name: String) -> Bool? {
@@ -110,9 +128,9 @@ actor WiFiRadioReader {
 private extension WiFiChannel {
     init(_ channel: CWChannel) {
         band = switch channel.channelBand {
-        case .band2GHz: "2,4 ГГц"
-        case .band5GHz: "5 ГГц"
-        case .band6GHz: "6 ГГц"
+        case .band2GHz: .ghz2Point4
+        case .band5GHz: .ghz5
+        case .band6GHz: .ghz6
         case .bandUnknown: nil
         @unknown default: nil
         }

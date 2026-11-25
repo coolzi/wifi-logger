@@ -27,7 +27,7 @@ import Testing
     session.append(reading(3, wallTime: 1004))
     let event = session.events.first(where: { $0.kind == .reconnected })
     #expect(event?.duration == 2)
-    #expect(session.chartOutages(in: session.chartWindow().samples) == [1 ... 3])
+    #expect(session.chartOutages(in: session.samples.indices) == [1 ... 3])
     #expect(session.chartTimes[1] == 1)
     #expect(session.chartTimes[3] == 3)
 }
@@ -42,7 +42,7 @@ import Testing
         }
         let event = session.events.first(where: { $0.kind == .reconnected })
         #expect(event?.duration == 2)
-        #expect(session.chartOutages(in: session.chartWindow().samples).isEmpty)
+        #expect(session.chartOutages(in: session.samples.indices).isEmpty)
     }
 }
 
@@ -157,8 +157,8 @@ import Testing
 
 @Test func chartRecordsChannelModeAndExactTransmitRate() {
     var session = WiFiSession()
-    session.append(graphReading(0, band: "5 ГГц", mode: "802.11ac", rate: 432.5))
-    session.append(graphReading(1, band: "6 ГГц", mode: "802.11ax", rate: 1201))
+    session.append(graphReading(0, band: .ghz5, mode: "802.11ac", rate: 432.5))
+    session.append(graphReading(1, band: .ghz6, mode: "802.11ax", rate: 1201))
 
     #expect(session.points(for: .channel).map(\.value) == [
         .category("149 · 5 ГГц · 80 МГц"), .category("149 · 6 ГГц · 80 МГц"),
@@ -192,13 +192,13 @@ import Testing
 
 @Test func chartSelectionFindsTheNearestRecordedSample() {
     var session = WiFiSession()
-    #expect(session.sampleIndex(nearest: 0, in: session.chartWindow().samples) == nil)
+    #expect(session.sampleIndex(nearest: 0, in: session.samples.indices) == nil)
 
     session.append(reading(1))
     session.append(reading(2, state: .disconnected))
     session.append(reading(5), startsSegment: true)
 
-    let range = session.chartWindow().samples
+    let range = session.samples.indices
     #expect(session.sampleIndex(nearest: -1, in: range) == 0)
     #expect(session.sampleIndex(nearest: 0.5, in: range) == 0)
     #expect(session.sampleIndex(nearest: 0.8, in: range) == 1)
@@ -212,7 +212,7 @@ import Testing
     session.append(reading(2))
     session.append(reading(2))
 
-    let range = session.chartWindow().samples
+    let range = session.samples.indices
     #expect(session.chartTimes == [0, 1, 2])
     #expect(session.segmentIDs == [0, 1, 2])
     #expect(session.sampleIndex(nearest: 1.5, in: range) == 1)
@@ -225,24 +225,28 @@ import Testing
         session.append(reading(Double(index), wallTime: time,
                                state: index == 1 || index == 2 ? .disconnected : .connected))
     }
-    let range = session.chartWindow().samples
+    let range = session.samples.indices
     #expect(session.samples[2].time == session.samples[5].time)
     #expect(session.chartOutages(in: range) == [1 ... 3])
     #expect(session.chartTimes[5] > session.chartTimes[3])
     #expect(session.sampleIndex(nearest: session.chartTimes[5], in: range) == 5)
 }
 
-@Test func chartWindowBoundsRenderingAndKeepsOlderSamplesReachable() {
+@Test @MainActor func chartWindowBoundsRenderingAndKeepsOlderSamplesReachable() {
     var session = WiFiSession()
-    #expect(session.chartWindow().samples.isEmpty)
+    #expect(WiFiRecording().chartWindow.samples.isEmpty)
     for index in 0..<900 {
         session.append(reading(Double(index), state: (200..<330).contains(index) ? .disconnected : .connected))
     }
-    let first = session.chartWindow(endingAt: 299).samples
-    let middle = session.chartWindow(endingAt: 499).samples
-    let latest = session.chartWindow().samples
+    let recording = WiFiRecording(session: session)
+    let latest = recording.chartWindow.samples
+    recording.moveRadioWindow(to: 299)
+    let first = recording.chartWindow.samples
+    recording.moveRadioWindow(to: 499)
+    let middle = recording.chartWindow.samples
     #expect(first == 0..<300)
-    #expect(session.chartWindow(endingAt: 119).samples == 0..<120)
+    recording.moveRadioWindow(to: 119)
+    #expect(recording.chartWindow.samples == 0..<120)
     #expect(middle == 199..<500)
     #expect(latest == 599..<900)
     #expect(session.points(for: .signal, in: latest).map(\.sampleIndex) == Array(latest))
@@ -268,44 +272,54 @@ import Testing
     #expect(WiFiTimelineChart.plotX(at: .zero, in: .zero) == nil)
 }
 
-@Test func chartSpanUsesElapsedTimeAndIncludesTheBoundaryAcrossPauses() {
+@Test @MainActor func chartSpanUsesElapsedTimeAndIncludesTheBoundaryAcrossPauses() {
     var session = WiFiSession()
     for time in [0.0, 29, 30, 32, 59, 60, 88, 89, 90] {
         session.append(reading(time, wallTime: 1000 - time))
     }
 
-    #expect(session.chartWindow(span: .thirtySeconds).samples == 5..<9)
-    #expect(session.chartWindow(span: .oneMinute).samples == 2..<9)
-    #expect(session.chartWindow(endingAt: 5, span: .thirtySeconds).samples == 2..<6)
-    #expect(session.chartWindow(span: .fiveMinutes).samples == 0..<9)
+    let recording = WiFiRecording(session: session)
+    #expect(recording.chartWindow.samples == 0..<9)
+    recording.changeChartSpan(.oneMinute)
+    #expect(recording.chartWindow.samples == 2..<9)
+    recording.changeChartSpan(.thirtySeconds)
+    #expect(recording.chartWindow.samples == 5..<9)
+    recording.moveRadioWindow(to: 5)
+    #expect(recording.chartWindow.samples == 2..<6)
     #expect(session.chartEndIndex(atOrBefore: 58) == 3)
     #expect(session.chartEndIndex(atOrBefore: 60) == 5)
 }
 
-@Test func chartSpanKeepsTheFullTimeDomainWhenAWindowContainsOneSample() {
+@Test @MainActor func chartSpanKeepsTheFullTimeDomainWhenAWindowContainsOneSample() {
     var session = WiFiSession()
     session.append(reading(0))
-    #expect(session.chartWindow().times == 0...5)
+    #expect(WiFiRecording(session: session).chartWindow.times == 0...5)
     session.append(reading(600, wallTime: -50))
 
-    let window = session.chartWindow(span: .fiveMinutes)
+    let window = WiFiRecording(session: session).chartWindow
     #expect(window.samples == 1..<2)
     #expect(window.times == 300...600)
 }
 
-@Test func chartPagingCrossesAPauseLongerThanTheVisibleSpan() {
+@Test @MainActor func chartPagingCrossesAPauseLongerThanTheVisibleSpan() throws {
     var session = WiFiSession()
     for time in [0.0, 1, 1000, 1001] {
         session.append(reading(time))
     }
 
     let span = WiFiChartSpan.oneMinute
-    let latest = session.chartWindow(span: span)
+    let recording = WiFiRecording(session: session)
+    recording.changeChartSpan(span)
+    let latest = recording.chartWindow
     #expect(latest.samples == 2..<4)
     let previousEnd = latest.samples.lowerBound - 1
-    #expect(session.chartWindow(endingAt: previousEnd, span: span).samples == 0..<2)
-    #expect(session.nextChartEnd(after: previousEnd, span: span) == 2)
-    #expect(session.nextChartEnd(after: 2, span: span) == 3)
+    recording.moveRadioWindow(to: previousEnd)
+    #expect(recording.chartWindow.samples == 0..<2)
+    let nextEnd = try #require(session.nextChartEnd(after: previousEnd, span: span))
+    #expect(nextEnd == 2)
+    recording.moveRadioWindow(to: nextEnd)
+    #expect(recording.chartWindow.samples == 2..<3)
+    #expect(session.nextChartEnd(after: nextEnd, span: span) == 3)
     #expect(session.nextChartEnd(after: 3, span: span) == nil)
 }
 
@@ -313,9 +327,9 @@ import Testing
     var session = WiFiSession()
     session.append(channelReading(0))
     session.append(channelReading(1, number: 44))
-    session.append(channelReading(2, band: "6 ГГц", number: 44))
-    session.append(channelReading(3, band: "6 ГГц", number: 44, width: 160))
-    session.append(channelReading(4, band: "6 ГГц", number: 48, width: 160, bssid: "second"))
+    session.append(channelReading(2, band: .ghz6, number: 44))
+    session.append(channelReading(3, band: .ghz6, number: 44, width: 160))
+    session.append(channelReading(4, band: .ghz6, number: 48, width: 160, bssid: "second"))
 
     #expect(session.events.map(\.sampleIndex) == [1, 2, 3, 4, 4])
     #expect(session.events.map { $0.kind.title } == [
@@ -345,7 +359,7 @@ import Testing
 
 private func graphReading(_ seconds: TimeInterval,
                           state: WiFiState = .connected,
-                          band: String = "5 ГГц", number: Int? = 149,
+                          band: WiFiBand = .ghz5, number: Int? = 149,
                           mode: String? = "802.11ax", rate: Double? = 866) -> WiFiSample {
     WiFiSample(time: Date(timeIntervalSince1970: seconds), monotonicTime: seconds, state: state,
                measurements: WiFiMeasurements(rssi: -60, noise: -92,
@@ -362,7 +376,7 @@ private func reading(_ seconds: TimeInterval, wallTime: TimeInterval? = nil, sta
 }
 
 private func channelReading(_ seconds: TimeInterval, state: WiFiState = .connected,
-                            band: String? = "5 ГГц", number: Int? = 36, width: Int? = 80,
+                            band: WiFiBand? = .ghz5, number: Int? = 36, width: Int? = 80,
                             bssid: String = "first") -> WiFiSample {
     WiFiSample(time: Date(timeIntervalSince1970: seconds), monotonicTime: seconds, state: state,
                measurements: WiFiMeasurements(ssid: "Home", bssid: bssid,

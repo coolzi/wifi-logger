@@ -24,6 +24,10 @@ struct WiFiAccessPointDirectory: Sendable {
         let renamed: Int
     }
 
+    private enum CSVFormat {
+        case strict, legacy
+    }
+
     private let csv: Data
     private let names: [String: String]
 
@@ -37,25 +41,32 @@ struct WiFiAccessPointDirectory: Sendable {
     }
 
     init(csv: Data) throws {
+        try self.init(csv: csv, format: .strict)
+    }
+
+    private init(csv: Data, format: CSVFormat) throws {
         guard var text = String(data: csv, encoding: .utf8) else { throw WiFiAccessPointCSVError.encoding }
         if text.first == "\u{FEFF}" { text.removeFirst() }
         let lines = text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
-        guard let first = lines.first, let (key, value) = Self.fields(in: first),
-              key == "bssid", value == "ap_name" else { throw WiFiAccessPointCSVError.header }
+        guard let first = lines.first, let (key, value) = Self.fields(in: first, format: format),
+              key.trimmingCharacters(in: .whitespaces) == "bssid",
+              value.trimmingCharacters(in: .whitespaces) == "ap_name" else { throw WiFiAccessPointCSVError.header }
 
         var names: [String: String] = [:]
         for (offset, line) in lines.enumerated().dropFirst() {
             let number = offset + 1
             if line.allSatisfy(\.isWhitespace) { continue }
-            guard let (address, name) = Self.fields(in: line) else {
+            guard let (address, rawName) = Self.fields(in: line, format: format) else {
                 throw WiFiAccessPointCSVError.row(line: number)
             }
             guard let bssid = Self.normalizedBSSID(address) else {
                 throw WiFiAccessPointCSVError.invalidBSSID(line: number)
             }
-            guard !name.isEmpty, !name.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else {
+            guard !rawName.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else {
                 throw WiFiAccessPointCSVError.invalidName(line: number)
             }
+            let name = rawName.trimmingCharacters(in: .whitespaces)
+            guard !name.isEmpty else { throw WiFiAccessPointCSVError.invalidName(line: number) }
             if let previous = names[bssid], previous != name {
                 throw WiFiAccessPointCSVError.conflictingName(line: number)
             }
@@ -84,10 +95,18 @@ struct WiFiAccessPointDirectory: Sendable {
     }
 
     static func load(from url: URL) throws -> Self? {
+        let csv: Data
         do {
-            return try Self(csv: Data(contentsOf: url))
+            csv = try Data(contentsOf: url)
         } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
             return nil
+        }
+        do {
+            return try Self(csv: csv)
+        } catch {
+            // Older versions saved the original CSV, including syntax accepted only by the old parser.
+            if let legacy = try? Self(csv: csv, format: .legacy) { return legacy }
+            throw error
         }
     }
 
@@ -99,17 +118,24 @@ struct WiFiAccessPointDirectory: Sendable {
         try csv.write(to: url, options: .atomic)
     }
 
-    private static func fields(in line: Substring) -> (String, String)? {
+    private static func fields(in line: Substring, format: CSVFormat) -> (String, String)? {
+        // A combining mark can share a grapheme cluster with a separator or quote.
         let pattern = #/("(?:[^"]|"")*"|[^",]*),("(?:[^"]|"")*"|[^",]*)/#
-        guard let (_, first, second) = line.wholeMatch(of: pattern)?.output else { return nil }
-        return (fieldValue(first), fieldValue(second))
+        let regex = format == .strict ? pattern.matchingSemantics(.unicodeScalar) : pattern
+        guard let (_, first, second) = line.wholeMatch(of: regex)?.output else { return nil }
+        return (fieldValue(first, format: format), fieldValue(second, format: format))
     }
 
-    private static func fieldValue(_ field: Substring) -> String {
-        let value = field.first == "\""
-            ? field.dropFirst().dropLast().replacingOccurrences(of: "\"\"", with: "\"")
-            : String(field)
-        return value.trimmingCharacters(in: .whitespaces)
+    private static func fieldValue(_ field: Substring, format: CSVFormat) -> String {
+        if format == .legacy {
+            let value = field.first == "\""
+                ? field.dropFirst().dropLast().replacingOccurrences(of: "\"\"", with: "\"")
+                : String(field)
+            return value.trimmingCharacters(in: .whitespaces)
+        }
+        let scalars = field.unicodeScalars
+        guard scalars.first == "\"" else { return String(field) }
+        return String(scalars.dropFirst().dropLast()).replacingOccurrences(of: "\"\"", with: "\"", options: .literal)
     }
 
     private static func normalizedBSSID(_ address: String) -> String? {

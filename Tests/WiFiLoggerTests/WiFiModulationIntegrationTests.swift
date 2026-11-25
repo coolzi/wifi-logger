@@ -135,7 +135,7 @@ private func demoSnapshot(finishedUptime: TimeInterval = 4.5) -> WiFiModulationS
     WiFiModulationSnapshot(interfaceName: "en0", startedAt: Date(timeIntervalSince1970: 1.25),
                            finishedAt: Date(timeIntervalSince1970: 2.5), startedUptime: finishedUptime - 1.25,
                            finishedUptime: finishedUptime,
-                           phyMode: "802.11ax", channel: WiFiChannel(band: "5 ГГц", number: 60, width: 40),
+                           phyMode: "802.11ax", channel: WiFiChannel(band: .ghz5, number: 60, width: 40),
                            mcs: 11, transmitRateMbps: 573)
 }
 

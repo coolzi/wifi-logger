@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import Testing
 
@@ -294,6 +295,56 @@ import Testing
     #expect(openedNewSegment)
     #expect(Set(recording.session.segmentIDs) == [0, 1])
     #expect(!recording.isRecording)
+}
+
+@Test @MainActor func captureUpdatesUnsharedHistoryInPlaceAndNotifiesItsObservers() async throws {
+    let historyCount = 100
+    let recording = timelineRecording(radio: (0..<historyCount).map(Double.init), modulation: [])
+    try #require(recording.session.samples.capacity > historyCount)
+    let previousAddress = recording.session.samples.withUnsafeBufferPointer { UInt(bitPattern: $0.baseAddress) }
+    recording.toggle()
+    let id = try #require(recording.captureID)
+    var countsBeforeUpdates: [Int] = []
+    let observation = recording.objectWillChange.sink {
+        countsBeforeUpdates.append(recording.session.samples.count)
+    }
+    defer { observation.cancel() }
+
+    let capture = Task { await recording.capture(id: id) }
+    defer { capture.cancel() }
+    try #require(await waitForCapture { recording.session.samples.count > historyCount })
+    let currentAddress = recording.session.samples.withUnsafeBufferPointer { UInt(bitPattern: $0.baseAddress) }
+    #expect(countsBeforeUpdates.first == historyCount)
+    #expect(currentAddress == previousAddress)
+}
+
+@Test func fixedChartContentChangesWhenAnOutageEndsBeyondTheWindow() {
+    var session = WiFiSession()
+    func append(_ second: TimeInterval, _ state: WiFiState, to session: inout WiFiSession) {
+        session.append(WiFiSample(time: Date(timeIntervalSince1970: second), monotonicTime: second,
+                                  state: state, measurements: WiFiMeasurements()))
+    }
+
+    append(0, .connected, to: &session)
+    append(1, .disconnected, to: &session)
+    append(2, .disconnected, to: &session)
+    let window = WiFiChartWindow(samples: 0..<3, times: 0...5)
+    func chart(_ session: WiFiSession, selection: Int? = 0,
+               mode: WiFiChartMode = .signalAndNoise) -> WiFiTimelineChart.Content {
+        .init(session: session, window: window, selectedIndex: selection, mode: mode)
+    }
+
+    let original = chart(session)
+    append(3, .disconnected, to: &session)
+    #expect(chart(session) == original)
+    append(4, .connected, to: &session)
+    let restored = chart(session)
+    #expect(restored != original)
+    #expect(restored.lastOutage == 1...4)
+    append(5, .connected, to: &session)
+    #expect(chart(session) == restored)
+    #expect(chart(session, selection: 2) != restored)
+    #expect(chart(session, mode: .snr) != restored)
 }
 
 @MainActor

@@ -7,7 +7,7 @@ enum WiFiLogger {
     static func main() {
         let arguments = Array(CommandLine.arguments.dropFirst())
         let executable = URL(fileURLWithPath: CommandLine.arguments[0]).lastPathComponent
-        if arguments.isEmpty && executable == "wifi-logger-app" {
+        if isGUILaunch(executable: executable, arguments: arguments) {
             WiFiLoggerApp.main()
             return
         }
@@ -42,6 +42,16 @@ enum WiFiLogger {
         default:
             reportError(usage)
             exit(EX_USAGE)
+        }
+    }
+
+    nonisolated static func isGUILaunch(executable: String, arguments: [String]) -> Bool {
+        guard executable == "wifi-logger-app", arguments.count.isMultiple(of: 2) else { return false }
+        return stride(from: 0, to: arguments.count, by: 2).allSatisfy { index in
+            let key = arguments[index]
+            let value = arguments[index + 1]
+            return (key == "-AppleLanguages" || key == "-AppleLocale")
+                && !value.isEmpty && !value.hasPrefix("-")
         }
     }
 

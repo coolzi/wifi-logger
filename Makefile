@@ -11,6 +11,23 @@ INSTALLER := dist/WiFi-Logger-$(VERSION)-macOS-arm64.pkg
 
 build: $(GUI_ICON)
 	swift build $(SWIFT_FLAGS) --product wifi-logger
+	@set -eu; \
+		resources="$(GUI_APP)/Contents/Resources"; \
+		mkdir -p "$$(dirname "$(GUI_APP)")"; \
+		staging="$$(mktemp -d "$(GUI_APP).localizations.XXXXXX")"; \
+		trap 'rm -rf "$$staging"' EXIT; \
+		for language in $(LOCALIZATIONS); do \
+			source_dir="Resources/$$language.lproj"; \
+			destination="$$staging/$$language.lproj"; \
+			mkdir "$$destination"; \
+			cp "$$source_dir/InfoPlist.strings" "$$destination/"; \
+			if [ "$$language" != ru ]; then \
+				cp "$$source_dir/Localizable.strings" "$$source_dir/Help.strings" "$$destination/"; \
+			fi; \
+		done; \
+		mkdir -p "$$resources"; \
+		rm -rf "$$resources"/*.lproj; \
+		mv "$$staging"/*.lproj "$$resources/"
 	build_bin="$$(swift build $(SWIFT_FLAGS) --show-bin-path)" && \
 		mkdir -p "$(APP)/Contents/MacOS" "$(GUI_APP)/Contents/MacOS" && \
 		cp "$$build_bin/wifi-logger" "$(COMMAND).next" && \
@@ -29,11 +46,6 @@ build: $(GUI_ICON)
 	cp LICENSE "$(APP)/Contents/Resources/"
 	cp LICENSE "$(GUI_APP)/Contents/Resources/"
 	cp "$(GUI_ICON)" "$(GUI_APP)/Contents/Resources/"
-	@set -e; for language in $(LOCALIZATIONS); do \
-		destination="$(GUI_APP)/Contents/Resources/$$language.lproj"; \
-		mkdir -p "$$destination"; \
-		cp Resources/$$language.lproj/*.strings "$$destination/"; \
-	done
 	codesign --force --sign - --options runtime \
 		--entitlements Resources/Location.entitlements.plist "$(APP)" "$(GUI_APP)"
 	@# Refresh the cached Finder icon after updating the existing bundle.
@@ -58,7 +70,7 @@ test:
 	swift test $(SWIFT_FLAGS) --disable-xctest
 
 test-localization: build
-	xcrun swift Tests/Integration/WiFiLocalization.swift "$(abspath $(GUI_APP))"
+	xcrun swift Tests/Integration/WiFiLocalization.swift "$$(cd "$(GUI_APP)" && pwd)" Resources
 
 test-capture-stall:
 	mkdir -p .build

@@ -358,8 +358,8 @@ struct WiFiModulationView: View {
                                     }) {
                                         select(index, atNSS: true)
                                     }
-                                } else if !profilerWindow.isEmpty {
-                                    select(nearestSnapshot(to: time, in: profilerWindow))
+                                } else if let index = snapshots[profilerWindow].nearestIndex(to: time, time: \.finishedUptime) {
+                                    select(index)
                                 }
                             })
                             .accessibilityHidden(true)
@@ -389,14 +389,16 @@ struct WiFiModulationView: View {
             ForEach(0..<4) { tick in
                 let fraction = Double(tick) / 3
                 let time = times.lowerBound + fraction * (times.upperBound - times.lowerBound)
-                let snapshot = snapshots[nearestSnapshot(to: time, in: visible)]
-                let date = snapshot.finishedAt.addingTimeInterval(time - snapshot.finishedUptime)
-                if tick == 0 || tick == 3 {
-                    Text(date, format: WiFiTimelineChart.clock)
-                        .frame(maxWidth: .infinity, alignment: tick == 0 ? .leading : .trailing)
-                } else {
-                    Text(date, format: WiFiTimelineChart.clock)
-                        .position(x: geometry.size.width * fraction, y: geometry.size.height / 2)
+                if let index = snapshots[visible].nearestIndex(to: time, time: \.finishedUptime) {
+                    let snapshot = snapshots[index]
+                    let date = snapshot.finishedAt.addingTimeInterval(time - snapshot.finishedUptime)
+                    if tick == 0 || tick == 3 {
+                        Text(date, format: WiFiTimelineChart.clock)
+                            .frame(maxWidth: .infinity, alignment: tick == 0 ? .leading : .trailing)
+                    } else {
+                        Text(date, format: WiFiTimelineChart.clock)
+                            .position(x: geometry.size.width * fraction, y: geometry.size.height / 2)
+                    }
                 }
             }
         }
@@ -454,13 +456,6 @@ struct WiFiModulationView: View {
     private func select(_ index: Int, atNSS: Bool = false) {
         guard snapshots.indices.contains(index) else { return }
         onSelect(index, atNSS)
-    }
-
-    private func nearestSnapshot(to time: TimeInterval, in range: Range<Int>) -> Int {
-        let right = snapshots[range].partitionIndex { $0.finishedUptime >= time }
-        if right == range.lowerBound { return right }
-        if right == range.upperBound { return right - 1 }
-        return time - snapshots[right - 1].finishedUptime <= snapshots[right].finishedUptime - time ? right - 1 : right
     }
 
     private enum Lane {

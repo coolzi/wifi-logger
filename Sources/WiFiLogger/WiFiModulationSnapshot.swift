@@ -148,10 +148,10 @@ struct WiFiModulationSnapshot: Identifiable, Sendable {
         guard let text = string(value),
               let channelMatch = text.firstMatch(of: #/^([0-9]+)(?:\s|\(|$)/#),
               let channelNumber = Int(channelMatch.1), channelNumber > 0 else { return nil }
-        let band: String? = switch text.firstMatch(of: #/(?i)\b(2(?:[.,]4)?|5|6)\s*GHz\b/#)?.1 {
-        case "2", "2.4", "2,4": "2,4 ГГц"
-        case "5": "5 ГГц"
-        case "6": "6 ГГц"
+        let band: WiFiBand? = switch text.firstMatch(of: #/(?i)\b(2(?:[.,]4)?|5|6)\s*GHz\b/#)?.1 {
+        case "2", "2.4", "2,4": .ghz2Point4
+        case "5": .ghz5
+        case "6": .ghz6
         default: nil
         }
         let width = text.firstMatch(of: #/(?i)\b([0-9]+)\s*MHz\b/#)

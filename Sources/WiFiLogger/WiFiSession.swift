@@ -68,7 +68,7 @@ enum WiFiChartSpan: Int, CaseIterable {
     }
 }
 
-struct WiFiChartWindow {
+struct WiFiChartWindow: Equatable {
     let samples: Range<Int>
     let times: ClosedRange<TimeInterval>
 }
@@ -87,15 +87,6 @@ struct WiFiSession {
 
     var rssiVariation: WiFiSignalVariation { signalWindow.rssiVariation }
     var snrVariation: WiFiSignalVariation { signalWindow.snrVariation }
-
-    func chartWindow(endingAt endIndex: Int? = nil, span: WiFiChartSpan = .fiveMinutes) -> WiFiChartWindow {
-        guard let last = chartTimes.indices.last else { return WiFiChartWindow(samples: 0..<0, times: 0...5) }
-        let endIndex = min(max(endIndex ?? last, 0), last)
-        let end = chartTimes[endIndex]
-        let start = max(0, end - span.seconds)
-        let first = chartTimes.partitionIndex { $0 >= start }
-        return WiFiChartWindow(samples: first..<(endIndex + 1), times: start...max(end, start + 5))
-    }
 
     func chartEndIndex(atOrBefore time: TimeInterval) -> Int? {
         let next = chartTimes.partitionIndex { $0 > time }
@@ -141,11 +132,7 @@ struct WiFiSession {
     }
 
     func sampleIndex(nearest time: TimeInterval, in range: Range<Int>) -> Int? {
-        guard !range.isEmpty else { return nil }
-        let right = chartTimes[range].partitionIndex { $0 >= time }
-        if right == range.lowerBound { return right }
-        if right == range.upperBound { return right - 1 }
-        return time - chartTimes[right - 1] <= chartTimes[right] - time ? right - 1 : right
+        chartTimes[range].nearestIndex(to: time) { $0 }
     }
 
     mutating func append(contentsOf samples: [WiFiSample], startsSegment: Bool) {
@@ -211,6 +198,17 @@ struct WiFiSession {
 }
 
 extension RandomAccessCollection where Index == Int {
+    // The collection must be ordered by time. At equal distance, prefer the earlier point.
+    func nearestIndex(to target: TimeInterval, time: (Element) -> TimeInterval) -> Int? {
+        guard !isEmpty else { return nil }
+        let right = partitionIndex { time($0) >= target }
+        if right == startIndex { return right }
+        if right == endIndex { return right - 1 }
+        let leftDistance = target - time(self[right - 1])
+        let rightDistance = time(self[right]) - target
+        return leftDistance <= rightDistance ? right - 1 : right
+    }
+
     // The predicate must be false before the boundary and true at and after it.
     func partitionIndex(where isAtOrAfterBoundary: (Element) -> Bool) -> Int {
         var lower = startIndex

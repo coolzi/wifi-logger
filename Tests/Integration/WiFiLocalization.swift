@@ -1,8 +1,8 @@
 import Foundation
 
-guard CommandLine.arguments.count == 2,
+guard (2...3).contains(CommandLine.arguments.count),
       let app = Bundle(path: CommandLine.arguments[1]) else {
-    fatalError("Expected a path to the built Wi-Fi Logger GUI app.")
+    fatalError("Expected the built Wi-Fi Logger GUI app and optionally its source Resources directory.")
 }
 
 func require(_ condition: @autoclosure () -> Bool, _ message: String) {
@@ -24,10 +24,26 @@ for (preference, expected) in [
 }
 
 guard let resources = app.resourceURL else { fatalError("The app resources are missing.") }
+let sourceResources = CommandLine.arguments.count == 3
+    ? URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true) : nil
+
+for language in supported {
+    let directory = resources.appendingPathComponent("\(language).lproj", isDirectory: true)
+    let expectedTables: Set<String> = language == "ru" ? ["InfoPlist.strings"]
+        : ["InfoPlist.strings", "Localizable.strings", "Help.strings"]
+    let bundledTables = try FileManager.default.contentsOfDirectory(atPath: directory.path)
+        .filter { $0.hasSuffix(".strings") }
+    require(Set(bundledTables) == expectedTables, "Unexpected tables in \(language).lproj.")
+}
 
 func catalog(_ table: String, language: String) throws -> [String: String] {
-    let file = resources.appendingPathComponent("\(language).lproj/\(table).strings")
+    let path = "\(language).lproj/\(table).strings"
+    let file = resources.appendingPathComponent(path)
     let data = try Data(contentsOf: file)
+    if let sourceResources {
+        let source = try? Data(contentsOf: sourceResources.appendingPathComponent(path))
+        require(data == source, "Bundled table differs from source or source is missing: \(path).")
+    }
     let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
     guard let strings = plist as? [String: String] else {
         fatalError("Invalid \(language)/\(table).strings")

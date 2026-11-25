@@ -25,6 +25,17 @@ import Testing
     #expect(directory.nameCount == 1)
 }
 
+@Test(arguments: [
+    ("\u{0301}Гости", "\u{0301}Гости"),
+    ("\"\u{0301}Гости\"", "\u{0301}Гости"),
+    ("\"Офис, \"\"\u{0301}этаж\"", "Офис, \"\u{0301}этаж"),
+])
+func accessPointCSVInterpretsSyntaxBeforeCombiningMarks(_ field: String, _ name: String) throws {
+    let csv = "bssid,ap_name\n02:11:22:33:44:a1," + field
+    let directory = try WiFiAccessPointDirectory(csv: Data(csv.utf8))
+    #expect(directory.name(for: "02:11:22:33:44:a1") == name)
+}
+
 @Test func accessPointReplacementCountsAddressesByTheirNameChange() throws {
     let previousCSV = """
         bssid,ap_name
@@ -59,8 +70,11 @@ import Testing
     ("name,bssid\nОфис,02:11:22:33:44:a1", WiFiAccessPointCSVError.header),
     ("bssid,ap_name\n", .empty),
     ("bssid,ap_name\n02:11:22:33:44:a1,  ", .invalidName(line: 2)),
+    ("bssid,ap_name\n02:11:22:33:44:a1,\tОфис", .invalidName(line: 2)),
+    ("bssid,ap_name\n02:11:22:33:44:a1,\"Офис\t\"", .invalidName(line: 2)),
     ("bssid,ap_name\n02:ac:ce:d0,Офис", .invalidBSSID(line: 2)),
     ("bssid,ap_name\n02:11:22:33:44:a1,Офис,лишнее", .row(line: 2)),
+    ("bssid,ap_name\n02:11:22:33:44:a1,Офис,\u{0301}лишнее", .row(line: 2)),
     ("bssid,ap_name\r\n\r\n02:11:22:33:44:a1,\"Офис", .row(line: 3)),
     ("bssid,ap_name\n02:11:22:33:44:a1,Офис\n0211-2233-44A1,Гости", .conflictingName(line: 3)),
 ])
@@ -90,4 +104,33 @@ func accessPointCSVRejectsInvalidInput(_ csv: String, _ error: WiFiAccessPointCS
     let reopened = try #require(loaded)
     #expect(reopened.name(for: "02:11:22:33:44:a1") == nil)
     #expect(reopened.name(for: "02:11:22:33:44:a2") == "Гости")
+}
+
+@Test(arguments: [
+    ("\tГости\t", "Гости", WiFiAccessPointCSVError.invalidName(line: 2)),
+    ("Офис,\u{0301}этаж", "Офис,\u{0301}этаж", .row(line: 2)),
+])
+func savedLegacyAccessPointDirectoryReopensWithoutAllowingNewImports(
+    _ field: String, _ name: String, _ error: WiFiAccessPointCSVError
+) throws {
+    let address = "02:11:22:33:44:a1"
+    let csv = Data("bssid,ap_name\n\(address),\(field)".utf8)
+    let saved = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: saved) }
+    try csv.write(to: saved, options: .atomic)
+
+    #expect(throws: error) { try WiFiAccessPointDirectory(csv: csv) }
+    #expect(try WiFiAccessPointDirectory.load(from: saved)?.name(for: address) == name)
+    #expect(try Data(contentsOf: saved) == csv)
+}
+
+@Test func unreadableAccessPointDirectoryReportsTheStrictError() throws {
+    let csv = Data("bssid,ap_name\n02:11:22:33:44:a1,Офис,\u{0301}\tэтаж".utf8)
+    let saved = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: saved) }
+    try csv.write(to: saved, options: .atomic)
+
+    #expect(throws: WiFiAccessPointCSVError.row(line: 2)) {
+        try WiFiAccessPointDirectory.load(from: saved)
+    }
 }

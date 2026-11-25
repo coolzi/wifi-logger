@@ -21,7 +21,8 @@ final class WiFiRecording: ObservableObject {
 
     private let modulationReader = WiFiModulationReader(spatialStreamsCommand: WiFiSpatialStreams.helperCommand)
     private var activeCapture: WiFiCaptureBuffer?
-    @Published private(set) var session = WiFiSession()
+    // Publishing the value itself retains its arrays during every mutation.
+    private(set) var session: WiFiSession
     @Published private(set) var modulationSnapshots: [WiFiModulationSnapshot] = []
     @Published private(set) var modulationReadingUnavailable = false
     @Published var tab: WiFiLoggerTab = .recording
@@ -105,14 +106,8 @@ final class WiFiRecording: ObservableObject {
     var selectedModulationIndex: Int? {
         guard let inspection = timelineFocus?.inspection else { return nil }
         let window = modulationWindow
-        guard !window.isEmpty else { return nil }
         if let index = inspection.modulationIndex, window.contains(index) { return index }
-        let right = modulationSnapshots[window].partitionIndex { $0.finishedUptime >= inspection.uptime }
-        if right == window.lowerBound { return right }
-        if right == window.upperBound { return right - 1 }
-        let leftDistance = inspection.uptime - modulationSnapshots[right - 1].finishedUptime
-        let rightDistance = modulationSnapshots[right].finishedUptime - inspection.uptime
-        return leftDistance <= rightDistance ? right - 1 : right
+        return modulationSnapshots[window].nearestIndex(to: inspection.uptime, time: \.finishedUptime)
     }
 
     var displayedSample: WiFiSample? {
@@ -204,6 +199,7 @@ final class WiFiRecording: ObservableObject {
 
     func restart() {
         _ = closeCapture()
+        objectWillChange.send()
         session = WiFiSession()
         modulationSnapshots = []
         preview = nil
@@ -280,6 +276,7 @@ final class WiFiRecording: ObservableObject {
 
     private func appendPending(from capture: WiFiCaptureBuffer) {
         if let batch = capture.drain() {
+            objectWillChange.send()
             session.append(contentsOf: batch.samples, startsSegment: batch.startsSegment)
         }
     }

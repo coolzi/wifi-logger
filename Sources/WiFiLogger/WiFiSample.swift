@@ -26,46 +26,53 @@ enum WiFiState: String, Sendable {
     }
 }
 
+enum WiFiBand: Double, CaseIterable, Sendable {
+    case ghz2Point4 = 2.4
+    case ghz5 = 5
+    case ghz6 = 6
+
+    var legacyLabel: String {
+        switch self {
+        case .ghz2Point4: "2,4 ГГц"
+        case .ghz5: "5 ГГц"
+        case .ghz6: "6 ГГц"
+        }
+    }
+
+    var displayLabel: String {
+        String(localized: "\(rawValue.formatted(.number.locale(WiFiInterfaceLocale.current))) ГГц")
+    }
+}
+
 struct WiFiChannel: Sendable {
-    let band: String?
+    let band: WiFiBand?
     let number: Int?
     let width: Int?
 
     var label: String {
-        [band, number.map { "канал \($0)" }, width.map { "\($0) МГц" }]
+        [band?.legacyLabel, number.map { "канал \($0)" }, width.map { "\($0) МГц" }]
             .map { $0 ?? "—" }
             .joined(separator: ", ")
     }
 
     var chartLabel: String? {
         guard let number, number > 0 else { return nil }
-        return [String(number), band, width.map { "\($0) МГц" }]
+        return [String(number), band?.legacyLabel, width.map { "\($0) МГц" }]
             .compactMap { $0 }
             .joined(separator: " · ")
     }
 
     var displayChartLabel: String? {
         guard let number, number > 0 else { return nil }
-        return [String(number), displayBand, displayWidth]
+        return [String(number), band?.displayLabel, displayWidth]
             .compactMap { $0 }
             .joined(separator: " · ")
     }
 
     var displayLabel: String {
-        displayChartLabel ?? [displayBand, number.map { String(localized: "канал \($0)") }, displayWidth]
+        displayChartLabel ?? [band?.displayLabel, number.map { String(localized: "канал \($0)") }, displayWidth]
             .map { $0 ?? "—" }
             .joined(separator: ", ")
-    }
-
-    private var displayBand: String? {
-        let frequency: Double
-        switch band {
-        case "2,4 ГГц": frequency = 2.4
-        case "5 ГГц": frequency = 5
-        case "6 ГГц": frequency = 6
-        default: return band
-        }
-        return String(localized: "\(frequency.formatted(.number.locale(WiFiInterfaceLocale.current))) ГГц")
     }
 
     private var displayWidth: String? {
@@ -103,7 +110,7 @@ struct WiFiMeasurements: Sendable {
         switch phyMode {
         case "802.11n": "Wi-Fi 4"
         case "802.11ac": "Wi-Fi 5"
-        case "802.11ax": channel?.band == "6 ГГц" ? "Wi-Fi 6E" : "Wi-Fi 6"
+        case "802.11ax": channel?.band == .ghz6 ? "Wi-Fi 6E" : "Wi-Fi 6"
         case "802.11be": "Wi-Fi 7"
         case "802.11a": "Wi-Fi (a)"
         case "802.11b": "Wi-Fi (b)"
