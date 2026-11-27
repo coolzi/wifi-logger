@@ -4,6 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct WiFiLoggerApp: App {
+    @NSApplicationDelegateAdaptor(WiFiLoggerAppDelegate.self) private var delegate
     @Environment(\.openWindow) private var openWindow
     private let interfaceDirection: LayoutDirection = WiFiInterfaceLocale.isRightToLeft ? .rightToLeft : .leftToRight
 
@@ -29,6 +30,12 @@ struct WiFiLoggerApp: App {
                 .environment(\.layoutDirection, interfaceDirection)
         }
         .defaultSize(width: 760, height: 530)
+    }
+}
+
+private final class WiFiLoggerAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillTerminate(_ notification: Notification) {
+        WiFiNetworkQuality.finishBeforeTermination()
     }
 }
 
@@ -89,7 +96,8 @@ struct WiFiLoggerWindow: View {
     private var session: WiFiSession { recording.session }
     private var tab: WiFiLoggerTab { recording.tab }
     private var hasSessionData: Bool {
-        !session.samples.isEmpty || !recording.modulationSnapshots.isEmpty
+        !session.samples.isEmpty || !session.networkQualityMarkers.isEmpty || !session.gatewayProbes.isEmpty
+            || !recording.modulationSnapshots.isEmpty
     }
 
     init(recording: WiFiRecording = WiFiRecording()) {
@@ -139,6 +147,12 @@ struct WiFiLoggerWindow: View {
         }
         .task(id: captureID) {
             await recording.captureModulation(id: captureID)
+        }
+        .task(id: captureID) {
+            await recording.captureGateway(id: captureID)
+        }
+        .task(id: recording.networkQualityState.runID) { [id = recording.networkQualityState.runID] in
+            await recording.runNetworkQuality(id: id)
         }
         .alert("Не удалось прочитать справочник точек доступа", isPresented: $accessPoints.loadFailed) {
             Button("OK", role: .cancel) {}
@@ -223,8 +237,8 @@ struct WiFiLoggerWindow: View {
         alert.messageText = String(localized: "Начать новую запись?")
         let consequence = String(localized: "После сброса исчезнут замеры, события и снимки модуляции.")
         let guidance = recording.isRecording
-            ? String(localized: "Чтобы сохранить всю историю, нажмите «Отмена», приостановите запись и выберите нужные пункты в меню «Сохранить CSV».")
-            : String(localized: "Чтобы сохранить всю историю, нажмите «Отмена», выберите нужные пункты в меню «Сохранить CSV».")
+            ? String(localized: "Чтобы сохранить замеры Wi-Fi и снимки модуляции, нажмите «Отмена», приостановите запись и выберите нужные пункты в меню «Сохранить CSV».")
+            : String(localized: "Чтобы сохранить замеры Wi-Fi и снимки модуляции, нажмите «Отмена», выберите нужные пункты в меню «Сохранить CSV».")
         alert.informativeText = "\(consequence) \(guidance)"
         let cancel = alert.addButton(withTitle: String(localized: "Отмена"))
         let reset = alert.addButton(withTitle: String(localized: "Сбросить и начать"))

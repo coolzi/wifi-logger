@@ -21,6 +21,9 @@ enum WiFiTrend: Int, CaseIterable {
     case phyMode
     case transmitRate
     case snr
+    case gatewayRTT
+
+    static let rightAxisTrends: Set<Self> = [.gatewayRTT, .snr, .transmitRate]
 
     func value(in sample: WiFiSample) -> WiFiChartValue? {
         let fields = sample.connectedMeasurements
@@ -31,6 +34,7 @@ enum WiFiTrend: Int, CaseIterable {
         case .phyMode: return fields.wifiGenerationLabel.map(WiFiChartValue.category)
         case .transmitRate: return fields.transmitRateMbps.map(WiFiChartValue.number)
         case .snr: return fields.snrDB.map { .number(Double($0)) }
+        case .gatewayRTT: return nil
         }
     }
 }
@@ -78,6 +82,8 @@ struct WiFiSession {
     private(set) var samples: [WiFiSample] = []
     private(set) var segmentIDs: [Int] = []
     private(set) var events: [WiFiEvent] = []
+    private(set) var networkQualityMarkers: [WiFiNetworkQualityMarker] = []
+    private(set) var gatewayProbes: [WiFiGatewayProbe] = []
     private(set) var outages = WiFiOutageSummary()
     private(set) var chartTimes: [TimeInterval] = []
     private var shadedOutages: [ClosedRange<Int>] = []
@@ -87,6 +93,14 @@ struct WiFiSession {
 
     var rssiVariation: WiFiSignalVariation { signalWindow.rssiVariation }
     var snrVariation: WiFiSignalVariation { signalWindow.snrVariation }
+
+    mutating func append(_ marker: WiFiNetworkQualityMarker) {
+        networkQualityMarkers.append(marker)
+    }
+
+    mutating func append(_ probe: WiFiGatewayProbe) {
+        gatewayProbes.append(probe)
+    }
 
     func chartEndIndex(atOrBefore time: TimeInterval) -> Int? {
         let next = chartTimes.partitionIndex { $0 > time }

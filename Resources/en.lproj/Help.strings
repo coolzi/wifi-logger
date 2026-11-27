@@ -22,7 +22,8 @@
 
 /* Signal and outages */
 "Понять сигнал и обрывы" = "Understand Signal and Outages";
-"RSSI — уровень сигнала. Значение −55 дБм означает более сильный сигнал, чем −70 дБм. Чем выше SNR, тем лучше сигнал различим на фоне шума. В режимах **«Сигнал и шум»** и **SNR** пороги качества доступны под графиком в разделе **«Как читать цвета»**." = "RSSI measures received signal strength. A reading of −55 dBm indicates a stronger signal than −70 dBm. A higher SNR means the signal stands out more clearly from the noise. In **Signal and Noise** and **SNR**, find the quality thresholds in **Understanding the Colors** below the chart.";
+"В разделе **«Графики»** включите нужные показатели. RSSI и шум читаются по левой шкале. Справа можно показать RTT, SNR или PHY-скорость. Курсор и диапазон времени общие." = "Under **Charts**, turn on the metrics you want to see. Read RSSI and noise on the left scale. The right scale shows RTT, SNR, or PHY rate. The chart shares one cursor and time range.";
+"RSSI — уровень сигнала. Значение −55 дБм означает более сильный сигнал, чем −70 дБм. Чем выше SNR, тем лучше сигнал различим на фоне шума. Пороги качества доступны под графиком в разделе **«Как читать цвета»**." = "RSSI measures received signal strength. A reading of −55 dBm indicates a stronger signal than −70 dBm. A higher SNR means the signal stands out more clearly from the noise. Find the quality thresholds in **Understanding the Colors** below the chart.";
 "В **«Событиях»** видны обрывы и восстановления связи, изменения номера, диапазона или ширины канала. Приложение отмечает смену точки доступа, когда у соседних замеров подключения совпадает SSID и меняется BSSID." = "**Events** lists connection losses and recoveries, along with changes to the channel number, band, or width. The app records an access point change when consecutive connected measurements have the same SSID and different BSSIDs.";
 
 /* Modulation */
@@ -35,7 +36,8 @@
 /* Export */
 "Сохранить запись" = "Save a Recording";
 "В окне записи откройте **«Сохранить CSV»**. Пункты **«Замеры Wi-Fi…»** и **«Снимки модуляции…»** сохраняют данные в отдельные файлы. Экспорт работает во время записи. В файл попадут данные, накопленные к моменту подтверждения сохранения." = "In the recording window, open **Save CSV**. **Wi-Fi Measurements…** and **Modulation Snapshots…** save their data to separate files. You can export while recording. Each file includes the data collected up to the moment you confirm the save.";
-"Чтобы сохранить всю историю перед закрытием окна или сбросом через **«Новая запись…»**, приостановите запись и сохраните каждый доступный CSV. Пауза фиксирует конец записи для обоих файлов. Время последнего замера и последнего снимка может различаться." = "To save the full history before closing the window or choosing **New Recording…**, click **Pause Recording** and save each available CSV. Pausing fixes the end of the recording for both files. The last measurement and the last snapshot may have different timestamps.";
+"Чтобы сохранить замеры Wi-Fi и снимки модуляции перед закрытием окна или сбросом через **«Новая запись…»**, приостановите запись и сохраните каждый доступный CSV. Пауза фиксирует конец записи для обоих файлов. Время последнего замера и последнего снимка может различаться." = "To save Wi-Fi measurements and modulation snapshots before closing the window or choosing **New Recording…**, click **Pause Recording** and save each available CSV. Pausing fixes the end of the recording for both files. The last measurement and the last snapshot may have different timestamps.";
+"Замеры шлюза доступны до сброса записи или закрытия окна." = "Gateway probes are available until you reset the recording or close the window.";
 
 /* Network names and location permission */
 "Показать имя сети и BSSID" = "Show the Network Name and BSSID";

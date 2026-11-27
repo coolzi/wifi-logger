@@ -47,9 +47,9 @@ import Testing
 }
 
 @Test func snrChartUsesDBAndTheSameQualityScaleAsTheReadout() {
-    #expect(WiFiChartMode.snr.trends == [.snr])
-    #expect(WiFiChartMode.snr.axisTitle == "дБ")
-    #expect(!WiFiChartMode.snr.usesCategories)
+    #expect(WiFiChartLane.snr.trends == [.snr])
+    #expect(WiFiChartLane.snr.axisTitle == "дБ")
+    #expect(!WiFiChartLane.snr.usesCategories)
     #expect(WiFiTrend.snr.qualityMetric == .snr)
 }
 

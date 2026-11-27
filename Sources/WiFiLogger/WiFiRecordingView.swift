@@ -14,11 +14,99 @@ struct WiFiRecordingView: View {
             VStack(alignment: .leading, spacing: 8) {
                 connectionFields
                 permissionHint
+                networkQualityControls
             }
             .wifiPanel()
             timeline.wifiPanel()
             stabilitySummary.wifiPanel()
             eventList.wifiPanel()
+        }
+    }
+
+    private var chartToggles: some View {
+        let trends = WiFiChartLane.allCases.flatMap(\.trends)
+        return ViewThatFits(in: .horizontal) {
+            chartToggleRow(trends[...])
+            VStack(alignment: .leading, spacing: 6) {
+                chartToggleRow(trends.prefix(4))
+                chartToggleRow(trends.dropFirst(4))
+            }
+        }
+    }
+
+    private func chartToggleRow(_ trends: ArraySlice<WiFiTrend>) -> some View {
+        HStack(spacing: 8) {
+            ForEach(trends, id: \.self) { trend in
+                let isOn = recording.chartTrends.contains(trend)
+                let title = chartToggleTitle(trend)
+                let label = trend.label
+                Toggle(isOn: Binding(get: { recording.chartTrends.contains(trend) }, set: {
+                    recording.setChartTrend(trend, visible: $0)
+                })) {
+                    Label {
+                        Text(title)
+                    } icon: {
+                        Image(systemName: "checkmark")
+                            .opacity(isOn ? 1 : 0)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(minWidth: 62)
+                }
+                .toggleStyle(.button)
+                .controlSize(.small)
+                .disabled(recording.chartTrends == [trend])
+                .accessibilityLabel(label)
+                .accessibilityInputLabels(title == label ? [label] : [title, label])
+                .frame(minWidth: 84)
+            }
+        }
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func chartToggleTitle(_ trend: WiFiTrend) -> String {
+        switch trend {
+        case .signal: "RSSI"
+        case .transmitRate: "PHY"
+        case .gatewayRTT: "RTT"
+        default: trend.label
+        }
+    }
+
+    private var networkQualityControls: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Button {
+                recording.requestNetworkQuality()
+            } label: {
+                Label("Проверить скорость Wi-Fi", systemImage: "gauge.with.dots.needle.67percent")
+            }
+            .disabled(recording.networkQualityState.runID != nil)
+            .help("Тест нагружает интернет-канал.")
+            networkQualityStatus
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder private var networkQualityStatus: some View {
+        switch recording.networkQualityState {
+        case .idle:
+            EmptyView()
+        case .running:
+            Text("Идёт проверка скорости Wi-Fi…")
+        case .measured(let result):
+            let speedFormat = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0...2))
+            let download = result.downloadMbps.formatted(speedFormat)
+            let upload = result.uploadMbps.formatted(speedFormat)
+            let rpm = result.rpm.formatted(.number.precision(.fractionLength(0)))
+            Text("Скачивание \(download) Мбит/с · Отдача \(upload) Мбит/с · \(rpm) RPM")
+                .textSelection(.enabled)
+        case .failed(.noInterface):
+            Text("Включите Wi-Fi и повторите проверку.")
+        case .failed(.timedOut):
+            Text("Проверка скорости заняла слишком много времени. Повторите попытку.")
+        case .failed(.failed):
+            Text("Не удалось измерить скорость Wi-Fi. Проверьте подключение и повторите попытку.")
         }
     }
 
@@ -72,20 +160,17 @@ struct WiFiRecordingView: View {
         let sampleCount = session.samples.count
         let displayedSample = recording.displayedSample
         let fields = displayedSample?.connectedMeasurements
-        let mode = recording.chartMode
-        let readouts = recording.chartReadouts
+        let selected = recording.chartTrends
+        let readouts = recording.chartLanes.flatMap(\.trends).filter(selected.contains)
+        let additional: [WiFiTrend] = recording.selectedIndex == nil ? [] : [.signal, .noise, .snr].filter { !selected.contains($0) }
         let window = recording.chartWindow
         let range = window.samples
+        let networkQualityMarkers = recording.visibleNetworkQualityMarkers
+        let probes = selected.contains(.gatewayRTT) ? recording.visibleGatewayProbes : []
         return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                Picker("График", selection: $recording.chartMode) {
-                    ForEach(WiFiChartMode.allCases, id: \.self) { mode in
-                        Text(mode.title).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .controlSize(.small)
+                Text("Графики").font(.headline).accessibilityAddTraits(.isHeader)
+                Spacer()
                 if !range.isEmpty, let sample = displayedSample {
                     let time = recording.isShowingHistory
                         ? WiFiInspectionTime.observation(sample.time, comparedTo: recording.inspectedAt)
@@ -99,14 +184,15 @@ struct WiFiRecordingView: View {
                     }
                 }
             }
+            chartToggles
             VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .top, spacing: 8) {
-                    ForEach(readouts.primary, id: \.self) { trend in
-                        chartReadout(trend, fields: fields, plotted: mode.trends.contains(trend))
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 135), spacing: 8)], alignment: .leading, spacing: 8) {
+                    ForEach(readouts, id: \.self) { trend in
+                        chartReadout(trend, fields: fields)
                     }
                 }
-                if let sample = displayedSample, !readouts.secondary.isEmpty {
-                    let summary = readouts.secondary.map { trend in
+                if let sample = displayedSample, !additional.isEmpty {
+                    let summary = additional.map { trend in
                         guard case let .number(value)? = trend.value(in: sample) else { return "\(trend.label) —" }
                         let metric: WiFiQualityMetric = trend == .snr ? .snr : .rssi
                         return "\(trend.label) \(value.formatted()) \(metric.unit)"
@@ -117,17 +203,19 @@ struct WiFiRecordingView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            if range.isEmpty {
+            if range.isEmpty, probes.isEmpty, networkQualityMarkers.isEmpty {
                 let title: LocalizedStringKey = sampleCount == 0 && !recording.isShowingHistory
                     ? "Запись ещё не началась" : "Нет замеров за этот период"
                 ContentUnavailableView(title, systemImage: "waveform.path")
                     .frame(maxWidth: .infinity)
-                    .frame(height: 218)
+                    .frame(height: WiFiTimelineChart.height)
             } else {
                 WiFiTimelineChart(recording: recording, content: .init(
-                    session: session, window: window, selectedIndex: recording.selectedIndex, mode: mode))
+                    session: session, window: window, selectedIndex: recording.radioCursorIndex, trends: selected,
+                    networkQualityMarkers: networkQualityMarkers, gatewayProbes: probes, chartOrigin: recording.chartOrigin,
+                    inspectedUptime: recording.inspectedUptime, inspectedAt: recording.inspectedAt))
                 .equatable()
-                .frame(height: 218)
+                .frame(height: WiFiTimelineChart.height)
                 // Swift Charts centers the last time label when its tick is near the right edge.
                 .padding(.trailing, 16)
                 .environment(\.layoutDirection, .leftToRight)
@@ -138,14 +226,11 @@ struct WiFiRecordingView: View {
             } else if range.isEmpty, sampleCount > 0 {
                 Button("К замеру") { moveChart(to: 0, in: sessionID) }
             }
-            if mode == .snr || mode == .signalAndNoise {
+            if !selected.isDisjoint(with: [.signal, .noise, .snr]) {
                 DisclosureGroup("Как читать цвета") {
-                    Group {
-                        if mode == .snr {
-                            snrLegend
-                        } else {
-                            qualityLegend
-                        }
+                    VStack(alignment: .leading, spacing: 8) {
+                        if !selected.isDisjoint(with: [.signal, .noise]) { qualityLegend }
+                        if selected.contains(.snr) { snrLegend }
                     }
                     .font(.caption)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -156,21 +241,28 @@ struct WiFiRecordingView: View {
         }
     }
 
-    @ViewBuilder private func chartReadout(_ trend: WiFiTrend, fields: WiFiMeasurements?, plotted: Bool) -> some View {
-        let series = plotted ? trend : nil
+    @ViewBuilder private func chartReadout(_ trend: WiFiTrend, fields: WiFiMeasurements?) -> some View {
         switch trend {
         case .signal:
-            qualityReadout(trend.label, value: fields?.signalDBm, metric: .rssi, trend: series)
+            qualityReadout(trend.label, value: fields?.signalDBm, metric: .rssi, trend: trend)
         case .noise:
-            qualityReadout(trend.label, value: fields?.noiseDBm, metric: .noise, trend: series)
+            qualityReadout(trend.label, value: fields?.noiseDBm, metric: .noise, trend: trend)
         case .snr:
-            qualityReadout(trend.label, value: fields?.snrDB, metric: .snr, trend: series)
+            qualityReadout(trend.label, value: fields?.snrDB, metric: .snr, trend: trend)
         case .channel:
-            readout(trend.label, value: fields?.channel?.displayChartLabel, trend: series)
+            readout(trend.label, value: fields?.channel?.displayChartLabel, trend: trend)
         case .phyMode:
-            readout(trend.label, value: fields?.wifiGenerationLabel, trend: series)
+            readout(trend.label, value: fields?.wifiGenerationLabel, trend: trend)
         case .transmitRate:
-            readout(trend.label, value: fields?.displayTransmitRate, trend: series)
+            readout(trend.label, value: fields?.displayTransmitRate, trend: trend)
+        case .gatewayRTT:
+            let probe = recording.displayedGatewayProbe
+            let time = probe.flatMap {
+                recording.isShowingHistory
+                    ? WiFiInspectionTime.observation($0.time, comparedTo: recording.inspectedAt)
+                    : $0.time.formatted(WiFiTimelineChart.clock)
+            }
+            readout(trend.label, value: probe?.result.displayLabel, trend: trend, detail: time)
         }
     }
 
@@ -227,7 +319,7 @@ struct WiFiRecordingView: View {
     }
 
     private func readout(_ title: String, value: String?, trend: WiFiTrend? = nil,
-                         quality: WiFiQuality? = nil, qualityLabel: String? = nil) -> some View {
+                         quality: WiFiQuality? = nil, qualityLabel: String? = nil, detail: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 5) {
                 if let trend {
@@ -235,19 +327,22 @@ struct WiFiRecordingView: View {
                         path.move(to: CGPoint(x: 0, y: 1))
                         path.addLine(to: CGPoint(x: 12, y: 1))
                     }
-                    .stroke(quality?.color ?? trend.color, style: trend.stroke)
+                    .stroke(trend.color, style: trend.stroke)
                     .frame(width: 12, height: 2)
                     .accessibilityHidden(true)
                 }
                 Text(title).foregroundStyle(.secondary).font(.caption)
             }
             Text(value ?? "—")
-                .font(.title2.weight(.semibold).monospacedDigit())
+                .font((trend == .gatewayRTT ? Font.subheadline : .title2).weight(.semibold).monospacedDigit())
                 .foregroundStyle(value == nil ? .secondary : quality?.color ?? .primary)
             if let qualityLabel {
                 Text(qualityLabel)
                     .font(.caption)
                     .foregroundStyle(quality?.color ?? .secondary)
+            }
+            if let detail {
+                Text(detail).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
             }
         }
         .wifiReadoutTile(tint: quality?.color)
@@ -263,14 +358,13 @@ struct WiFiRecordingView: View {
                 legendItem("−80…<−70", quality: .weak)
                 legendItem("< −80", quality: .poor)
             }
-            snrLegend
             HStack(spacing: 12) {
                 Text("Шум, дБм").frame(width: 65, alignment: .leading)
                 legendItem("≤ −92", quality: .good, metric: .noise)
                 legendItem(">−92…≤−87", quality: .fair, metric: .noise)
                 legendItem("> −87", quality: .poor, metric: .noise)
             }
-            Text("Шум — пунктир; его шкала рассчитана для сигнала −67 дБм. Фактическое соотношение — SNR.")
+            Text("Шум показан пунктиром. Пороги качества шума рассчитаны для сигнала −67 дБм. Фактическое соотношение — SNR.")
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }

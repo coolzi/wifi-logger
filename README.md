@@ -6,7 +6,7 @@ Wi-Fi Logger records the current Wi-Fi connection on a Mac. It charts signal str
 
 - The **Wi-Fi Measurements** tab samples the connection approximately every 250 ms.
 - The **Modulation Snapshots** tab shows available MCS, modulation, coding rate, PHY transmit rate and spatial stream measurements. macOS supplies these snapshots separately.
-- **Save CSV** exports all collected measurements or all modulation snapshots as separate files. **File → Import Access Point Names…** adds readable names for BSSIDs from a CSV.
+- **Save CSV** exports all radio measurements or all modulation snapshots as separate files. **File → Import Access Point Names…** adds readable names for BSSIDs from a CSV.
 
 ## Build and run
 
@@ -29,7 +29,7 @@ See [Build and test](BUILD.md) for tests, Command Line Tools flags and the local
 
 ## Data and permissions
 
-Recordings live in memory. You can save a CSV during recording. The file includes data collected up to the moment you confirm the save. To keep a complete session, pause recording and save each available CSV before closing the recording window or starting a new session. The imported access point directory is stored in the user's Library under Application Support and remains available after restarting.
+Recordings live in memory. You can save a CSV during recording. The file includes data collected up to the moment you confirm the save. To keep all radio measurements and modulation snapshots, pause recording and save each available CSV before closing the recording window or starting a new session. Use the Charts toggles to select radio measurements and gateway RTT on the same timeline. The imported access point directory is stored in the user's Library under Application Support and remains available after restarting.
 
 macOS may require Location Services permission to expose the network name (SSID) and hardware address of the access point (BSSID). The GUI offers **Allow** when access can be requested. To ask from the command line, pass `--request-location`. These identifiers and measurement timestamps can be present in CSV exports and terminal output. Check them before sharing a file or a log.
 

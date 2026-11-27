@@ -6,11 +6,14 @@ import Foundation
 enum WiFiLogger {
     static func main() {
         let arguments = Array(CommandLine.arguments.dropFirst())
+        #if WIFI_LOGGER_GUI_BUILD
+        // macOS uses the executable UUID as one of the local network identity signals.
         let executable = URL(fileURLWithPath: CommandLine.arguments[0]).lastPathComponent
         if isGUILaunch(executable: executable, arguments: arguments) {
             WiFiLoggerApp.main()
             return
         }
+        #endif
         let usage = "Использование: wifi-logger [--request-location]"
         switch arguments {
         case _ where arguments.first == WiFiSpatialStreams.commandLineFlag:

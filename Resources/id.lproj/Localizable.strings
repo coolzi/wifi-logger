@@ -1,3 +1,24 @@
+/* IPv4 gateway probe */
+"Графики" = "Grafik";
+"RTT до шлюза" = "RTT ke gateway";
+"Шлюз IPv4" = "Gateway IPv4";
+"Нет замеров шлюза за этот период" = "Tidak ada pengukuran gateway dalam rentang ini";
+"Шлюз не ответил" = "Gateway tidak merespons";
+"RTT, мс" = "RTT, ms";
+"RTT %@ мс" = "RTT %@ ms";
+"Замер недоступен" = "Pengukuran tidak tersedia";
+
+/* Wi-Fi speed test */
+"Проверить скорость Wi-Fi" = "Uji Kecepatan Wi-Fi";
+"Тест нагружает интернет-канал." = "Pengujian ini menghasilkan lalu lintas pada koneksi internet.";
+"Идёт проверка скорости Wi-Fi…" = "Menguji kecepatan Wi-Fi…";
+"Скачивание %@ Мбит/с · Отдача %@ Мбит/с · %@ RPM" = "Unduh %@ Mbps · Unggah %@ Mbps · %@ RPM";
+"Включите Wi-Fi и повторите проверку." = "Aktifkan Wi-Fi dan coba lagi.";
+"Проверка скорости заняла слишком много времени. Повторите попытку." = "Uji kecepatan melebihi batas waktu. Coba lagi.";
+"Не удалось измерить скорость Wi-Fi. Проверьте подключение и повторите попытку." = "Kecepatan Wi-Fi tidak dapat diukur. Periksa koneksi dan coba lagi.";
+"Начало проверки скорости Wi-Fi" = "Uji kecepatan Wi-Fi dimulai";
+"Конец проверки скорости Wi-Fi" = "Uji kecepatan Wi-Fi berakhir";
+
 /* Menus, recording controls, and dialogs */
 "Справка Wi-Fi Logger" = "Bantuan Wi-Fi Logger";
 "Импорт имён точек доступа…" = "Impor Nama Titik Akses…";
@@ -18,8 +39,8 @@
 "Продолжить запись" = "Lanjutkan Perekaman";
 "Начать новую запись?" = "Mulai rekaman baru?";
 "После сброса исчезнут замеры, события и снимки модуляции." = "Pengaturan ulang akan menghapus pengukuran, peristiwa, dan cuplikan modulasi.";
-"Чтобы сохранить всю историю, нажмите «Отмена», приостановите запись и выберите нужные пункты в меню «Сохранить CSV»." = "Untuk menyimpan seluruh riwayat, klik Batal, jeda perekaman, lalu pilih opsi yang diperlukan di menu Simpan CSV.";
-"Чтобы сохранить всю историю, нажмите «Отмена», выберите нужные пункты в меню «Сохранить CSV»." = "Untuk menyimpan seluruh riwayat, klik Batal, lalu pilih opsi yang diperlukan di menu Simpan CSV.";
+"Чтобы сохранить замеры Wi-Fi и снимки модуляции, нажмите «Отмена», приостановите запись и выберите нужные пункты в меню «Сохранить CSV»." = "Untuk menyimpan pengukuran Wi-Fi dan cuplikan modulasi, klik Batal, jeda perekaman, lalu pilih opsi yang diperlukan di menu Simpan CSV.";
+"Чтобы сохранить замеры Wi-Fi и снимки модуляции, нажмите «Отмена», выберите нужные пункты в меню «Сохранить CSV»." = "Untuk menyimpan pengukuran Wi-Fi dan cuplikan modulasi, klik Batal, lalu pilih opsi yang diperlukan di menu Simpan CSV.";
 "Отмена" = "Batal";
 "OK" = "Oke";
 "Сбросить и начать" = "Atur Ulang dan Mulai";
@@ -89,7 +110,7 @@
 "RSSI, дБм" = "RSSI, dBm";
 "Шум, дБм" = "Derau, dBm";
 "SNR, дБ" = "SNR, dB";
-"Шум — пунктир; его шкала рассчитана для сигнала −67 дБм. Фактическое соотношение — SNR." = "Garis putus-putus menunjukkan derau. Skalanya mengasumsikan sinyal sebesar −67 dBm. SNR menunjukkan rasio sinyal terhadap derau yang terukur.";
+"Шум показан пунктиром. Пороги качества шума рассчитаны для сигнала −67 дБм. Фактическое соотношение — SNR." = "Garis putus-putus menunjukkan derau. Ambang kualitas derau dihitung untuk sinyal −67 dBm. SNR menampilkan rasio sinyal terhadap derau yang terukur.";
 "Хороший" = "Baik";
 "Допустимый" = "Cukup";
 "Слабый" = "Lemah";

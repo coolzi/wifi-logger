@@ -11,11 +11,13 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.15</string>
+    <string>1.0.16</string>
     <key>CFBundleVersion</key>
-    <string>1.0.15</string>
+    <string>1.0.16</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>WiFi Logger измеряет задержку до шлюза Wi-Fi во время записи.</string>
     <key>NSLocationUsageDescription</key>
     <string>WiFi Logger использует это разрешение для чтения имени сети Wi-Fi и идентификатора точки доступа.</string>
     <key>NSLocationWhenInUseUsageDescription</key>

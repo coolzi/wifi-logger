@@ -1,2 +1,3 @@
 "NSLocationUsageDescription" = "Wi-Fi Logger menggunakan akses lokasi untuk membaca nama jaringan Wi-Fi (SSID) dan pengenal titik akses (BSSID).";
 "NSLocationWhenInUseUsageDescription" = "Wi-Fi Logger menggunakan akses lokasi untuk membaca nama jaringan Wi-Fi (SSID) dan pengenal titik akses (BSSID).";
+"NSLocalNetworkUsageDescription" = "Wi-Fi Logger mengukur waktu pulang-pergi ke gateway Wi-Fi selama perekaman.";

@@ -25,18 +25,8 @@ enum WiFiInspectionTime {
     }
 }
 
-enum WiFiChartMode: CaseIterable {
-    case signalAndNoise, snr, channel, phyMode, transmitRate
-
-    var title: String {
-        switch self {
-        case .signalAndNoise: String(localized: "Сигнал и шум")
-        case .snr: "SNR"
-        case .channel: String(localized: "Канал")
-        case .phyMode: String(localized: "Режим")
-        case .transmitRate: String(localized: "Скорость")
-        }
-    }
+enum WiFiChartLane: CaseIterable {
+    case signalAndNoise, snr, channel, phyMode, transmitRate, gatewayRTT
 
     var trends: [WiFiTrend] {
         switch self {
@@ -45,6 +35,7 @@ enum WiFiChartMode: CaseIterable {
         case .channel: [.channel]
         case .phyMode: [.phyMode]
         case .transmitRate: [.transmitRate]
+        case .gatewayRTT: [.gatewayRTT]
         }
     }
 
@@ -55,27 +46,116 @@ enum WiFiChartMode: CaseIterable {
         case .channel: String(localized: "Канал")
         case .phyMode: "Wi-Fi"
         case .transmitRate: String(localized: "Мбит/с")
+        case .gatewayRTT: String(localized: "RTT, мс")
         }
     }
 
     var usesCategories: Bool { self == .channel || self == .phyMode }
 }
 
+struct WiFiChartScale {
+    static let gridPositions = [0.0, 0.25, 0.5, 0.75, 1.0]
+
+    let bounds: ClosedRange<Double>
+
+    func position(of value: Double) -> Double {
+        (value - bounds.lowerBound) / (bounds.upperBound - bounds.lowerBound)
+    }
+
+    func value(at position: Double) -> Double {
+        bounds.lowerBound + (bounds.upperBound - bounds.lowerBound) * position
+    }
+}
+
+struct WiFiGatewayChartPoint: Identifiable {
+    let probe: WiFiGatewayProbe
+    let milliseconds: Double
+    let segment: Int
+    let startsSegment: Bool
+
+    var id: TimeInterval { probe.id }
+
+    static func replies(in probes: [WiFiGatewayProbe]) -> [Self] {
+        var points: [Self] = []
+        var previous: WiFiGatewayProbe?
+        var segment = 0
+        for probe in probes {
+            guard case .reply(let milliseconds) = probe.result else {
+                previous = nil
+                continue
+            }
+            let startsSegment = previous.map {
+                let elapsed = probe.uptime - $0.uptime
+                return probe.captureID != $0.captureID || elapsed <= 0 || elapsed > 1.5
+            } ?? true
+            if startsSegment { segment += 1 }
+            points.append(Self(probe: probe, milliseconds: milliseconds, segment: segment,
+                               startsSegment: startsSegment))
+            previous = probe
+        }
+        return points
+    }
+}
+
+struct WiFiTimelineObservation {
+    enum Source {
+        case radio(Int)
+        case gateway(WiFiGatewayProbe)
+    }
+
+    let time: TimeInterval
+    let date: Date
+    let source: Source
+
+    static func merged(_ radio: [Self], _ gateway: [Self]) -> [Self] {
+        var result: [Self] = []
+        result.reserveCapacity(radio.count + gateway.count)
+        var radioIndex = 0
+        var gatewayIndex = 0
+        while radioIndex < radio.count, gatewayIndex < gateway.count {
+            let sample = radio[radioIndex]
+            let probe = gateway[gatewayIndex]
+            if sample.time <= probe.time {
+                result.append(sample)
+                radioIndex += 1
+                // Both readouts remain available at a shared position.
+                if sample.time == probe.time { gatewayIndex += 1 }
+            } else {
+                result.append(probe)
+                gatewayIndex += 1
+            }
+        }
+        result.append(contentsOf: radio[radioIndex...])
+        result.append(contentsOf: gateway[gatewayIndex...])
+        return result
+    }
+}
+
 struct WiFiTimelineChart: View, Equatable {
     struct Content: Equatable {
         let sessionID: UUID
         let window: WiFiChartWindow
-        let selectedIndex: Int?
-        let mode: WiFiChartMode
+        let selectedTime: TimeInterval?
+        let inspectedAt: Date?
+        let trends: Set<WiFiTrend>
         // A later sample can complete an outage that overlaps a fixed window.
         let lastOutage: ClosedRange<Int>?
+        let networkQualityMarkers: [WiFiNetworkQualityMarker]
+        let gatewayProbes: [WiFiGatewayProbe]
+        let chartOrigin: TimeInterval
 
-        init(session: WiFiSession, window: WiFiChartWindow, selectedIndex: Int?, mode: WiFiChartMode) {
+        init(session: WiFiSession, window: WiFiChartWindow, selectedIndex: Int?, trends: Set<WiFiTrend>,
+             networkQualityMarkers: [WiFiNetworkQualityMarker] = [], gatewayProbes: [WiFiGatewayProbe] = [],
+             chartOrigin: TimeInterval = 0, inspectedUptime: TimeInterval? = nil, inspectedAt: Date? = nil) {
             sessionID = session.id
             self.window = window
-            self.selectedIndex = selectedIndex
-            self.mode = mode
+            self.trends = trends
+            selectedTime = selectedIndex.map { session.chartTimes[$0] } ?? inspectedUptime.map { $0 - chartOrigin }
+            self.inspectedAt = inspectedAt
             lastOutage = session.chartOutages(in: window.samples).last
+            self.networkQualityMarkers = networkQualityMarkers
+            self.gatewayProbes = trends.contains(.gatewayRTT) ? gatewayProbes : []
+            self.chartOrigin = chartOrigin
         }
     }
 
@@ -85,9 +165,18 @@ struct WiFiTimelineChart: View, Equatable {
         let end: TimeInterval
     }
 
+    private struct CategoryChange: Identifiable {
+        let point: WiFiChartPoint
+        let label: String
+        let row: Double
+
+        var id: Int { point.id }
+    }
+
     let recording: WiFiRecording
     let content: Content
 
+    static let height: CGFloat = 248
     static let clock = Date.FormatStyle(date: .omitted, time: .standard, locale: WiFiInspectionTime.locale)
 
     nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
@@ -100,15 +189,20 @@ struct WiFiTimelineChart: View, Equatable {
         }
     }
 
-    private var mode: WiFiChartMode { content.mode }
-
     private func chart(in session: WiFiSession) -> some View {
         let window = content.window
         let range = window.samples
         let times = window.times
-        let coordinates = range.map { (time: session.chartTimes[$0], date: session.samples[$0].time) }
-        func observation(at index: Int) -> (time: TimeInterval, date: Date) {
-            coordinates[index - range.lowerBound]
+        let coordinates = range.map { index in
+            WiFiTimelineObservation(time: session.chartTimes[index], date: session.samples[index].time, source: .radio(index))
+        }
+        let gatewayObservations = content.gatewayProbes.map { probe in
+            WiFiTimelineObservation(time: probe.uptime - content.chartOrigin, date: probe.time, source: .gateway(probe))
+        }
+        let observations = WiFiTimelineObservation.merged(content.trends == [.gatewayRTT] ? [] : coordinates, gatewayObservations)
+        let selectedIndex = content.selectedTime.flatMap { time -> Int? in
+            guard let index = observations.nearestIndex(to: time, time: \.time), observations[index].time == time else { return nil }
+            return index
         }
         let events = Array(session.chartEvents(in: range))
         let outages = session.chartOutages(in: range).map { outage in
@@ -116,123 +210,201 @@ struct WiFiTimelineChart: View, Equatable {
             let end = min(outage.upperBound, range.upperBound - 1)
             return Outage(id: outage.lowerBound, start: start, end: session.chartTimes[end])
         }
-        let points = mode.trends.flatMap { session.points(for: $0, in: range) }
-        let categoryLabels = points.reduce(into: [String: String]()) { labels, point in
-            guard case .category(let category) = point.value, labels[category] == nil else { return }
-            let channel = point.trend == .channel ? session.samples[point.sampleIndex].measurements.channel : nil
-            labels[category] = channel?.displayChartLabel ?? category
+        let leftTrends = WiFiChartLane.signalAndNoise.trends.filter(content.trends.contains)
+        let rightLane = WiFiChartLane.allCases.first { lane in
+            lane.trends.contains { WiFiTrend.rightAxisTrends.contains($0) && content.trends.contains($0) }
         }
-        let categories = categoryLabels.keys.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-        let positions = Dictionary(uniqueKeysWithValues: categories.enumerated().map { (index, label) in
-            (label, Double(index))
-        })
-        let bounds = valueBounds(points: points, categoryCount: categories.count)
-        let selectedIndex = content.selectedIndex
-        let timeTitle = String(localized: "Время")
-        let seriesTitle = String(localized: "Отрезок")
-        let eventTitle = String(localized: "Событие")
-        let outageStartTitle = String(localized: "Начало разрыва")
-        let outageEndTitle = String(localized: "Конец разрыва")
-        let axisTitle = mode.axisTitle
-        let trendTitles = Dictionary(uniqueKeysWithValues: mode.trends.map { ($0, $0.label) })
-        let qualityStyles: [WiFiTrend: AnyShapeStyle] = [
-            .signal: AnyShapeStyle(WiFiQualityMetric.rssi.gradient(in: bounds)),
-            .noise: AnyShapeStyle(WiFiQualityMetric.noise.gradient(in: bounds)),
-            .snr: AnyShapeStyle(WiFiQualityMetric.snr.gradient(in: bounds)),
-        ]
-        return Chart {
-            if points.isEmpty {
-                // An empty series still needs a temporal scale for selecting recorded samples.
-                RuleMark(x: .value(timeTitle, times.lowerBound))
-                    .foregroundStyle(.clear)
-                    .accessibilityHidden(true)
+        let rightTrend = rightLane?.trends.first
+        let leftPoints = leftTrends.flatMap { session.points(for: $0, in: range) }
+        let rightPoints: [WiFiChartPoint] = if let rightTrend, rightTrend != .gatewayRTT {
+            session.points(for: rightTrend, in: range)
+        } else { [] }
+        let probes = content.gatewayProbes
+        let replies = WiFiGatewayChartPoint.replies(in: probes)
+        let timeouts = probes.filter { $0.result == .timeout }
+        let leftScale = WiFiChartScale(bounds: numericBounds(leftPoints, default: -100 ... -40))
+        let rightScale: WiFiChartScale? = rightLane.map { lane in
+            switch lane {
+            case .gatewayRTT:
+                let maximum = replies.reduce(20.0) { max($0, $1.milliseconds) }
+                return WiFiChartScale(bounds: 0 ... ((maximum / 20).rounded(.up) * 20))
+            case .snr:
+                return WiFiChartScale(bounds: numericBounds(rightPoints, default: 0 ... 40))
+            default:
+                return WiFiChartScale(bounds: numericBounds(rightPoints, default: 0 ... 100))
             }
+        }
+        let categoryTrends: [WiFiTrend] = [.channel, .phyMode].filter(content.trends.contains)
+        let categoryRows = categoryTrends.indices.map { -0.07 - Double($0) * 0.12 }
+        let categories = zip(categoryTrends, categoryRows).flatMap { trend, row in
+            categoryChanges(in: session, trend: trend, range: range, row: row)
+        }
+        let yMin = categoryRows.last.map { $0 - 0.07 } ?? 0
+        let timeTitle = String(localized: "Время")
+        let eventTitle = String(localized: "Событие")
+        let seriesTitle = String(localized: "Отрезок")
+        let positionTitle = String(localized: "График")
+        let clockAnchors = coordinates.isEmpty ? gatewayObservations : coordinates
+        let firstMarker = content.networkQualityMarkers.first
+        let showTimeout = !timeouts.isEmpty
+
+        let plot = Chart {
+            // Preserve a temporal axis in windows without a numeric reading.
+            RuleMark(x: .value(timeTitle, times.lowerBound))
+                .foregroundStyle(.clear)
+                .accessibilityHidden(true)
             ForEach(outages) { outage in
-                RectangleMark(xStart: .value(outageStartTitle, outage.start),
-                              xEnd: .value(outageEndTitle, outage.end),
-                              yStart: .value(axisTitle, bounds.lowerBound),
-                              yEnd: .value(axisTitle, bounds.upperBound))
+                RectangleMark(xStart: .value(timeTitle, outage.start), xEnd: .value(timeTitle, outage.end),
+                              yStart: .value(positionTitle, yMin), yEnd: .value(positionTitle, 1.0))
                     .foregroundStyle(.red.opacity(0.09))
                     .accessibilityHidden(true)
             }
             ForEach(events) { event in
-                RuleMark(x: .value(eventTitle, observation(at: event.sampleIndex).time))
+                RuleMark(x: .value(eventTitle, coordinates[event.sampleIndex - range.lowerBound].time))
                     .foregroundStyle(event.kind.color.opacity(0.72))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 4]))
                     .accessibilityHidden(true)
             }
-            ForEach(points) { point in
-                if let value = coordinate(of: point.value, categoryPositions: positions) {
-                    let time = observation(at: point.sampleIndex).time
-                    LineMark(x: .value(timeTitle, time), y: .value(axisTitle, value),
-                             series: .value(seriesTitle, point.seriesID))
-                        .foregroundStyle(qualityStyles[point.trend] ?? AnyShapeStyle(point.trend.color))
-                        .alignsMarkStylesWithPlotArea()
-                        .lineStyle(point.trend.stroke)
-                        .interpolationMethod(mode.usesCategories ? .stepEnd : .linear)
-                        .accessibilityLabel((trendTitles[point.trend] ?? "") + ", " + point.time.formatted(Self.clock))
-                        .accessibilityValue(accessibleValue(point.value, axisTitle: axisTitle, categoryLabels: categoryLabels))
-                    if point.sampleIndex == point.segment {
-                        PointMark(x: .value(timeTitle, time), y: .value(axisTitle, value))
-                            .foregroundStyle(point.trend.qualityMetric?.quality(for: value)?.color ?? point.trend.color)
-                            .symbolSize(13)
+            ForEach(content.networkQualityMarkers) { marker in
+                let isStart = marker.kind == .started
+                RuleMark(x: .value(eventTitle, marker.uptime - content.chartOrigin))
+                    .foregroundStyle(Color.purple)
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: isStart ? [5, 3] : []))
+                    .annotation(position: .overlay, alignment: .top) {
+                        Image(systemName: isStart ? "play.fill" : "stop.fill")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Color.purple)
+                            .offset(x: isStart ? -8 : 8)
+                            .accessibilityHidden(true)
+                    }
+                    .accessibilityLabel(isStart ? Text("Начало проверки скорости Wi-Fi") : Text("Конец проверки скорости Wi-Fi"))
+                    .accessibilityValue(marker.date.formatted(Self.clock))
+            }
+            radioMarks(leftPoints, scale: leftScale,
+                       windowStart: range.lowerBound, coordinates: coordinates)
+            if let rightScale {
+                radioMarks(rightPoints, scale: rightScale,
+                           windowStart: range.lowerBound, coordinates: coordinates)
+                ForEach(replies) { point in
+                    let time = point.probe.uptime - content.chartOrigin
+                    let y = rightScale.position(of: point.milliseconds)
+                    LineMark(x: .value(timeTitle, time), y: .value(positionTitle, y),
+                             series: .value(seriesTitle, -point.segment))
+                        .foregroundStyle(WiFiTrend.gatewayRTT.color)
+                        .lineStyle(WiFiTrend.gatewayRTT.stroke)
+                    if point.startsSegment || time == content.selectedTime {
+                        PointMark(x: .value(timeTitle, time), y: .value(positionTitle, y))
+                            .foregroundStyle(WiFiTrend.gatewayRTT.color)
+                            .symbolSize(time == content.selectedTime ? 36 : 13)
                             .accessibilityHidden(true)
                     }
                 }
             }
-            if let selectedIndex, range.contains(selectedIndex) {
-                RuleMark(x: .value(String(localized: "Выбранный замер"), observation(at: selectedIndex).time))
-                    .foregroundStyle(.primary.opacity(0.65))
+            ForEach(timeouts) { probe in
+                let time = probe.uptime - content.chartOrigin
+                RuleMark(x: .value(timeTitle, time),
+                         yStart: .value(positionTitle, 0.0), yEnd: .value(positionTitle, 0.08))
+                    .foregroundStyle(Color.red)
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
+                    .accessibilityLabel(probe.time.formatted(Self.clock))
+                    .accessibilityValue(probe.result.displayLabel)
+            }
+            ForEach(categories) { change in
+                let time = coordinates[change.point.sampleIndex - range.lowerBound].time
+                PointMark(x: .value(timeTitle, time), y: .value(positionTitle, change.row))
+                    .foregroundStyle(change.point.trend.color)
+                    .symbol(.square)
+                    .symbolSize(time == content.selectedTime ? 34 : 19)
+                    .accessibilityLabel(change.point.trend.label + ", " + change.point.time.formatted(Self.clock))
+                    .accessibilityValue(change.label)
+            }
+            if let time = content.selectedTime, times.contains(time) {
+                RuleMark(x: .value(String(localized: "Выбранный замер"), time))
+                    .foregroundStyle(.primary.opacity(0.72))
                     .accessibilityHidden(true)
             }
         }
-        .chartXScale(domain: times)
-        .chartYScale(domain: bounds)
+        .chartXScale(domain: times, range: .plotDimension(padding: 0))
+        .chartYScale(domain: yMin ... 1)
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 4)) { mark in
                 AxisGridLine()
-                if let time = mark.as(Double.self),
-                   let index = coordinates.nearestIndex(to: time, time: { $0.time }) {
-                    let sample = coordinates[index]
-                    let date = sample.date.addingTimeInterval(time - sample.time)
-                    AxisValueLabel { Text(date, format: Self.clock) }
+                if let time = mark.as(Double.self) {
+                    if let index = clockAnchors.nearestIndex(to: time, time: \.time) {
+                        let sample = clockAnchors[index]
+                        AxisValueLabel { Text(sample.date.addingTimeInterval(time - sample.time), format: Self.clock) }
+                    } else if let marker = firstMarker {
+                        let offset = time - (marker.uptime - content.chartOrigin)
+                        AxisValueLabel { Text(marker.date.addingTimeInterval(offset), format: Self.clock) }
+                    }
                 }
             }
         }
         .chartYAxis {
-            if mode.usesCategories {
-                AxisMarks(position: .leading, values: categories.indices.map { Double($0) }) { mark in
+            if !leftTrends.isEmpty || rightScale != nil {
+                AxisMarks(position: .leading, values: WiFiChartScale.gridPositions) { mark in
                     AxisGridLine()
-                    if let coordinate = mark.as(Double.self), categories.indices.contains(Int(coordinate)) {
-                        let category = categories[Int(coordinate)]
-                        AxisValueLabel { Text(categoryLabels[category] ?? category) }
+                    if !leftTrends.isEmpty, let position = mark.as(Double.self) {
+                        AxisValueLabel { axisNumber(leftScale.value(at: position), color: .secondary) }
                     }
                 }
-            } else {
-                AxisMarks(position: .leading) {
+            }
+            if let rightScale, let rightTrend {
+                AxisMarks(position: .trailing, values: WiFiChartScale.gridPositions) { mark in
+                    if let position = mark.as(Double.self) {
+                        AxisValueLabel { axisNumber(rightScale.value(at: position), color: rightTrend.color) }
+                    }
+                }
+            }
+            if !categoryRows.isEmpty {
+                AxisMarks(position: .leading, values: categoryRows) { mark in
                     AxisGridLine()
-                    AxisValueLabel()
+                    if let value = mark.as(Double.self), let index = categoryRows.firstIndex(of: value) {
+                        AxisValueLabel { Text(categoryTrends[index].label).font(.caption2) }
+                    }
                 }
             }
         }
-        .chartYAxisLabel(axisTitle, position: .leading)
         .chartOverlay { proxy in
             GeometryReader { geometry in
                 Rectangle()
                     .fill(.clear)
                     .contentShape(Rectangle())
                     .gesture(SpatialTapGesture().onEnded { tap in
-                        guard let anchor = proxy.plotFrame,
-                              let x = Self.plotX(at: tap.location, in: geometry[anchor]),
-                              let time = proxy.value(atX: x, as: Double.self),
-                              let index = coordinates.nearestIndex(to: time, time: { $0.time }) else { return }
-                        select(index + range.lowerBound)
+                        guard let anchor = proxy.plotFrame else { return }
+                        let frame = geometry[anchor]
+                        guard let x = Self.plotX(at: tap.location, in: frame),
+                              let time = proxy.value(atX: x, as: Double.self) else { return }
+                        // The denser radio samples can occupy the same screen column as an RTT mark.
+                        if let rightScale, !probes.isEmpty {
+                            let point = CGPoint(x: x, y: tap.location.y - frame.minY)
+                            let radioDistance = coordinates.nearestIndex(to: time, time: \.time).map { index in
+                                let sample = coordinates[index]
+                                let sampleIndex = index + range.lowerBound
+                                guard let sampleX = proxy.position(forX: sample.time) else { return CGFloat(7) }
+                                let left = Self.radioDistance(in: leftPoints, at: sampleIndex, scale: leftScale,
+                                    dx: sampleX - x, y: { proxy.position(forY: $0).map { $0 - point.y } })
+                                let right = Self.radioDistance(in: rightPoints, at: sampleIndex, scale: rightScale,
+                                    dx: sampleX - x, y: { proxy.position(forY: $0).map { $0 - point.y } })
+                                return min(left, right)
+                            } ?? 7
+                            if let probe = Self.gatewayHit(in: probes, at: point, scale: rightScale,
+                                                          closerThan: radioDistance,
+                                                          x: { proxy.position(forX: $0 - content.chartOrigin) },
+                                                          y: { proxy.position(forY: $0) }) {
+                                select(WiFiTimelineObservation(time: probe.uptime - content.chartOrigin,
+                                                               date: probe.time, source: .gateway(probe)))
+                                return
+                            }
+                        }
+                        guard let index = observations.nearestIndex(to: time, time: \.time) else { return }
+                        select(observations[index])
                     })
                     .accessibilityHidden(true)
             }
         }
         .overlay {
-            if points.isEmpty {
+            if leftPoints.isEmpty, rightPoints.isEmpty, replies.isEmpty, categories.isEmpty, !showTimeout {
                 Text("Нет значений для этого графика за выбранный период")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -241,13 +413,138 @@ struct WiFiTimelineChart: View, Equatable {
                     .allowsHitTesting(false)
             }
         }
-        .wifiChartSelection(String(localized: "График «\(mode.title)»"), in: range, selectedIndex: selectedIndex,
-                            date: { observation(at: $0).date }, onSelect: select)
+
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 8) {
+                if !leftTrends.isEmpty {
+                    let names = leftTrends.map { $0 == .signal ? "RSSI" : $0.label }.joined(separator: " · ")
+                    Text("\(names), \(WiFiChartLane.signalAndNoise.axisTitle)")
+                }
+                Spacer()
+                if showTimeout {
+                    Label("Шлюз не ответил", systemImage: "line.vertical")
+                }
+                if let rightLane, let rightTrend {
+                    Text(rightLane == .snr ? String(localized: "SNR, дБ") : rightLane.axisTitle)
+                        .foregroundStyle(rightTrend.color)
+                }
+            }
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.secondary)
+            .frame(minHeight: 16)
+            // Replace the generated chart labels, which use coordinates from a 0...1 scale.
+            VStack {
+                plot.accessibilityRepresentation {
+                    VStack {
+                        ForEach(content.networkQualityMarkers) { marker in
+                            let isStart = marker.kind == .started
+                            Text(isStart ? "Начало проверки скорости Wi-Fi" : "Конец проверки скорости Wi-Fi")
+                                .accessibilityValue(WiFiInspectionTime.timestamp(marker.date))
+                        }
+                        ForEach(timeouts) { probe in
+                            Text("Шлюз не ответил").accessibilityValue(WiFiInspectionTime.timestamp(probe.time))
+                        }
+                        ForEach(categories) { change in
+                            Text(change.point.trend.label + " · " + change.label)
+                                .accessibilityValue(WiFiInspectionTime.timestamp(change.point.time))
+                        }
+                    }
+                }
+            }
+                .wifiChartSelection(String(localized: "График"), in: observations.indices,
+                                    selectedIndex: selectedIndex, cursorTime: content.selectedTime,
+                                    cursorDate: content.inspectedAt, timeOf: { observations[$0].time },
+                                    date: { observations[$0].date }, onSelect: { select(observations[$0]) })
+        }
     }
 
-    private func select(_ index: Int) {
+    @ChartContentBuilder
+    private func radioMarks(_ points: [WiFiChartPoint], scale: WiFiChartScale,
+                            windowStart: Int, coordinates: [WiFiTimelineObservation]) -> some ChartContent {
+        let timeTitle = String(localized: "Время")
+        let seriesTitle = String(localized: "Отрезок")
+        let positionTitle = String(localized: "График")
+        ForEach(points) { point in
+            if case .number(let value) = point.value {
+                let time = coordinates[point.sampleIndex - windowStart].time
+                let y = scale.position(of: value)
+                LineMark(x: .value(timeTitle, time), y: .value(positionTitle, y), series: .value(seriesTitle, point.seriesID))
+                    .foregroundStyle(point.trend.color)
+                    .lineStyle(point.trend.stroke)
+                if point.sampleIndex == point.segment || time == content.selectedTime {
+                    PointMark(x: .value(timeTitle, time), y: .value(positionTitle, y))
+                        .foregroundStyle(point.trend.color)
+                        .symbolSize(time == content.selectedTime ? 36 : 13)
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+    }
+
+    private func categoryChanges(in session: WiFiSession, trend: WiFiTrend, range: Range<Int>, row: Double) -> [CategoryChange] {
+        var previous: WiFiChartPoint?
+        return session.points(for: trend, in: range).compactMap { point in
+            defer { previous = point }
+            guard previous?.value != point.value || previous?.segment != point.segment,
+                  case .category(let rawLabel) = point.value else { return nil }
+            let channel = trend == .channel ? session.samples[point.sampleIndex].measurements.channel : nil
+            return CategoryChange(point: point, label: channel?.displayChartLabel ?? rawLabel, row: row)
+        }
+    }
+
+    private func numericBounds(_ points: [WiFiChartPoint], default initial: ClosedRange<Double>) -> ClosedRange<Double> {
+        points.reduce(initial) { bounds, point in
+            guard case .number(let value) = point.value else { return bounds }
+            return min(bounds.lowerBound, value) ... max(bounds.upperBound, value)
+        }
+    }
+
+    private func axisNumber(_ value: Double, color: Color) -> some View {
+        Text(value.formatted(.number.precision(.fractionLength(0...2))))
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(color)
+    }
+
+    private func select(_ observation: WiFiTimelineObservation) {
         guard recording.session.id == content.sessionID else { return }
-        recording.selectRadioSample(index)
+        switch observation.source {
+        case .radio(let index): recording.selectRadioSample(index)
+        case .gateway(let probe): recording.selectGatewayProbe(probe)
+        }
+    }
+
+    nonisolated static func radioDistance(in points: [WiFiChartPoint], at sampleIndex: Int, scale: WiFiChartScale,
+                                         dx: CGFloat, y: (Double) -> CGFloat?) -> CGFloat {
+        points.reduce(7) { distance, point in
+            guard point.sampleIndex == sampleIndex, case .number(let value) = point.value,
+                  let dy = y(scale.position(of: value)) else { return distance }
+            return min(distance, hypot(dx, dy))
+        }
+    }
+
+    nonisolated static func gatewayHit(in probes: [WiFiGatewayProbe], at point: CGPoint, scale: WiFiChartScale,
+                                       closerThan radioDistance: CGFloat = 7,
+                                       x: (TimeInterval) -> CGFloat?, y: (Double) -> CGFloat?) -> WiFiGatewayProbe? {
+        var best: (probe: WiFiGatewayProbe, distance: CGFloat)?
+        for probe in probes {
+            guard let probeX = x(probe.uptime) else { continue }
+            let dx = abs(probeX - point.x)
+            guard dx <= 1.5 else { continue }
+            let targetY: CGFloat
+            switch probe.result {
+            case .reply(let rtt):
+                guard let position = y(scale.position(of: rtt)) else { continue }
+                targetY = position
+            case .timeout:
+                guard let start = y(0), let end = y(0.08) else { continue }
+                targetY = min(max(point.y, min(start, end)), max(start, end))
+            case .unavailable:
+                continue
+            }
+            let distance = hypot(dx, targetY - point.y)
+            if distance < min(radioDistance, best?.distance ?? 7) { best = (probe, distance) }
+        }
+        return best?.probe
     }
 
     nonisolated static func plotX(at location: CGPoint, in frame: CGRect) -> CGFloat? {
@@ -257,39 +554,23 @@ struct WiFiTimelineChart: View, Equatable {
         // Keep the rightmost click inside ChartProxy's x scale.
         return min(location.x - frame.minX, frame.width.nextDown)
     }
-
-    private func valueBounds(points: [WiFiChartPoint], categoryCount: Int) -> ClosedRange<Double> {
-        if mode.usesCategories {
-            return -0.5 ... (Double(max(0, categoryCount - 1)) + 0.5)
-        }
-        let initial: ClosedRange<Double> = switch mode {
-        case .snr: 0 ... 40
-        case .transmitRate: 0 ... 10
-        default: -100 ... -40
-        }
-        return points.reduce(initial) { bounds, point in
-            guard case .number(let value) = point.value else { return bounds }
-            return min(bounds.lowerBound, value) ... max(bounds.upperBound, value)
-        }
-    }
-
-    private func coordinate(of value: WiFiChartValue, categoryPositions: [String: Double]) -> Double? {
-        switch value {
-        case .number(let value): value
-        case .category(let label): categoryPositions[label]
-        }
-    }
-
-    private func accessibleValue(_ value: WiFiChartValue, axisTitle: String, categoryLabels: [String: String]) -> String {
-        switch value {
-        case .number(let value): "\(value.formatted(.number.precision(.fractionLength(0 ... 1)))) \(axisTitle)"
-        case .category(let label): categoryLabels[label] ?? label
-        }
-    }
 }
 
 enum WiFiChartSelectionStep {
     case previous, next
+
+    func target<Indices: RandomAccessCollection>(in indices: Indices, from time: TimeInterval,
+                                                  timeOf: (Int) -> TimeInterval) -> Int?
+        where Indices.Index == Int, Indices.Element == Int {
+        switch self {
+        case .previous:
+            let position = indices.partitionIndex { timeOf($0) >= time }
+            return position > indices.startIndex ? indices[position - 1] : nil
+        case .next:
+            let position = indices.partitionIndex { timeOf($0) > time }
+            return position < indices.endIndex ? indices[position] : nil
+        }
+    }
 
     func target<Indices: RandomAccessCollection>(in indices: Indices, from selectedIndex: Int?) -> Int?
         where Indices.Index == Int, Indices.Element == Int {
@@ -332,24 +613,37 @@ struct WiFiChartSelectionLabels {
 
 extension View {
     @ViewBuilder func wifiChartSelection<Indices: RandomAccessCollection>(
-        _ title: String, in indices: Indices, selectedIndex: Int?, date: (Int) -> Date,
+        _ title: String, in indices: Indices, selectedIndex: Int?, cursorTime: TimeInterval? = nil,
+        cursorDate: Date? = nil, timeOf: ((Int) -> TimeInterval)? = nil, date: (Int) -> Date,
         labels: WiFiChartSelectionLabels = .radioSample,
         onSelect: @escaping (Int) -> Void
     ) -> some View where Indices.Index == Int, Indices.Element == Int {
         if let last = indices.last {
             let selected = selectedIndex.flatMap { indices.contains($0) ? $0 : nil }
-            let current = selected ?? last
+            let current = if let cursorTime, let timeOf, selected == nil {
+                WiFiChartSelectionStep.previous.target(in: indices, from: cursorTime, timeOf: timeOf)
+                    ?? WiFiChartSelectionStep.next.target(in: indices, from: cursorTime, timeOf: timeOf) ?? last
+            } else {
+                selected ?? last
+            }
             let time = date(current).formatted(.dateTime.year().month().day()
                 .hour().minute().second().secondFraction(.fractional(3)).locale(WiFiInspectionTime.locale))
-            let selectionDescription = if selected != nil {
+            let selectionDescription = if let cursorDate {
+                String(localized: "Выбранный момент · \(WiFiInspectionTime.timestamp(cursorDate))")
+            } else if selected != nil {
                 String(localized: "\(labels.displayedItem) в \(time)")
-            } else if selectedIndex != nil {
+            } else if selectedIndex != nil || cursorTime != nil {
                 String(localized: "В выбранный момент нет точки на этом графике")
             } else {
                 String(localized: "\(labels.lastItem) в \(time)")
             }
             let step: (WiFiChartSelectionStep) -> Void = { direction in
-                if let target = direction.target(in: indices, from: selectedIndex) { onSelect(target) }
+                let target = if let cursorTime, let timeOf, selected == nil {
+                    direction.target(in: indices, from: cursorTime, timeOf: timeOf)
+                } else {
+                    direction.target(in: indices, from: selectedIndex)
+                }
+                if let target { onSelect(target) }
             }
             self
                 .focusable(interactions: .edit)
@@ -368,7 +662,7 @@ extension View {
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel(title)
                 .accessibilityValue(selectionDescription)
-                .accessibilityAction(named: Text(selected == nil ? labels.showLast : labels.show)) {
+                .accessibilityAction(named: Text(selected == nil && cursorTime == nil ? labels.showLast : labels.show)) {
                     onSelect(current)
                 }
                 .accessibilityAction(named: Text(labels.previous)) { step(.previous) }
@@ -388,17 +682,19 @@ extension WiFiTrend {
         case .phyMode: String(localized: "Режим")
         case .transmitRate: String(localized: "Скорость передачи")
         case .snr: "SNR"
+        case .gatewayRTT: String(localized: "RTT до шлюза")
         }
     }
 
     var color: Color {
         switch self {
-        case .signal: WiFiQuality.good.color
-        case .noise: WiFiQuality.good.color
+        case .signal: .teal
+        case .noise: .secondary
         case .channel: .blue
         case .phyMode: .purple
-        case .transmitRate: .teal
-        case .snr: WiFiQuality.good.color
+        case .transmitRate: .blue
+        case .snr: .orange
+        case .gatewayRTT: .purple
         }
     }
     var qualityMetric: WiFiQualityMetric? {

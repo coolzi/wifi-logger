@@ -39,19 +39,19 @@ import Testing
     #expect(recording.modulationWindow == 3..<5)
 }
 
-@Test(arguments: WiFiChartMode.allCases)
-@MainActor func pinningASampleKeepsTheSameChartReadouts(mode: WiFiChartMode) {
+@Test(arguments: WiFiChartLane.allCases)
+@MainActor func pinningASampleKeepsTheSameChartSelection(lane: WiFiChartLane) {
     let recording = timelineRecording(radio: [1000, 1010, 1020], modulation: [])
-    recording.chartMode = mode
-    let latest = recording.chartReadouts
-    #expect(latest.secondary.isEmpty)
+    for trend in lane.trends { recording.setChartTrend(trend, visible: true) }
+    for trend in WiFiTrend.allCases where !lane.trends.contains(trend) {
+        recording.setChartTrend(trend, visible: false)
+    }
 
     recording.selectRadioSample(1)
 
-    let historical = recording.chartReadouts
-    #expect(historical.primary == latest.primary)
-    #expect(Set(historical.primary).isDisjoint(with: historical.secondary))
-    #expect(Set(historical.primary + historical.secondary).isSuperset(of: [.signal, .noise, .snr]))
+    #expect(recording.chartLanes == [lane])
+    #expect(recording.chartTrends == Set(lane.trends))
+    #expect(recording.displayedSample?.monotonicTime == 1010)
 }
 
 @Test func observationTimeAvoidsRepeatingTheSelectedInstantAndIncludesAnotherDate() {
@@ -192,7 +192,8 @@ import Testing
                                   state: state, measurements: WiFiMeasurements(rssi: -55)))
     }
     let recording = WiFiRecording(session: history)
-    recording.chartMode = .snr
+    recording.setChartTrend(.snr, visible: true)
+    let trends = recording.chartTrends
     recording.changeChartSpan(.fifteenMinutes)
     recording.selectRadioSample(1)
 
@@ -209,7 +210,7 @@ import Testing
     #expect(recording.displayedSample == nil)
     #expect(recording.selectedIndex == nil)
     #expect(!recording.isShowingHistory)
-    #expect(recording.chartMode == .snr)
+    #expect(recording.chartTrends == trends)
     #expect(recording.chartSpan == .fifteenMinutes)
 
     let currentID = try #require(recording.captureID)
@@ -330,8 +331,8 @@ import Testing
     append(2, .disconnected, to: &session)
     let window = WiFiChartWindow(samples: 0..<3, times: 0...5)
     func chart(_ session: WiFiSession, selection: Int? = 0,
-               mode: WiFiChartMode = .signalAndNoise) -> WiFiTimelineChart.Content {
-        .init(session: session, window: window, selectedIndex: selection, mode: mode)
+               trends: Set<WiFiTrend> = [.signal, .noise]) -> WiFiTimelineChart.Content {
+        .init(session: session, window: window, selectedIndex: selection, trends: trends)
     }
 
     let original = chart(session)
@@ -344,7 +345,7 @@ import Testing
     append(5, .connected, to: &session)
     #expect(chart(session) == restored)
     #expect(chart(session, selection: 2) != restored)
-    #expect(chart(session, mode: .snr) != restored)
+    #expect(chart(session, trends: [.snr]) != restored)
 }
 
 @MainActor

@@ -77,6 +77,12 @@ for (key, value) in [
     ("Начать запись", "Start Recording"),
     ("Сбросить и начать", "Reset and Start"),
     ("Замеры Wi-Fi", "Wi-Fi Measurements"),
+    ("Графики", "Charts"),
+    ("RTT до шлюза", "Gateway RTT"),
+    ("Шлюз не ответил", "Gateway did not reply"),
+    ("Проверить скорость Wi-Fi", "Check Wi-Fi Speed"),
+    ("Начало проверки скорости Wi-Fi", "Wi-Fi speed test started"),
+    ("Конец проверки скорости Wi-Fi", "Wi-Fi speed test ended"),
     ("дБм", "dBm"),
 ] {
     require(englishUI[key] == value,
@@ -91,5 +97,13 @@ for permission in ["NSLocationUsageDescription", "NSLocationWhenInUseUsageDescri
     require(permissions[permission]?.contains("access point") == true,
             "Missing English location permission explanation for \(permission).")
 }
+let localNetworkKey = "NSLocalNetworkUsageDescription"
+require((app.infoDictionary?[localNetworkKey] as? String)?.isEmpty == false,
+        "Missing Local Network usage description in Info.plist.")
+require(permissions[localNetworkKey]?.contains("Wi-Fi gateway") == true,
+        "Missing English Local Network explanation for Wi-Fi gateway measurement.")
+let russianPermissions = try catalog("InfoPlist", language: "ru")
+require(russianPermissions[localNetworkKey]?.contains("шлюз") == true,
+        "Missing Russian Local Network explanation for Wi-Fi gateway measurement.")
 
 print("All eleven GUI languages and their expected strings, help, and permission descriptions are bundled.")

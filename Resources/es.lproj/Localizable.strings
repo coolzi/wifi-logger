@@ -1,3 +1,24 @@
+/* IPv4 gateway probe */
+"Графики" = "Gráficos";
+"RTT до шлюза" = "RTT a la puerta de enlace";
+"Шлюз IPv4" = "Puerta de enlace IPv4";
+"Нет замеров шлюза за этот период" = "No hay mediciones de la puerta de enlace en este intervalo";
+"Шлюз не ответил" = "La puerta de enlace no respondió";
+"RTT, мс" = "RTT, ms";
+"RTT %@ мс" = "RTT %@ ms";
+"Замер недоступен" = "Medición no disponible";
+
+/* Wi-Fi speed test */
+"Проверить скорость Wi-Fi" = "Comprobar velocidad Wi-Fi";
+"Тест нагружает интернет-канал." = "Esta prueba genera tráfico en tu conexión a internet.";
+"Идёт проверка скорости Wi-Fi…" = "Comprobando la velocidad Wi-Fi…";
+"Скачивание %@ Мбит/с · Отдача %@ Мбит/с · %@ RPM" = "Descarga %@ Mbps · Subida %@ Mbps · %@ RPM";
+"Включите Wi-Fi и повторите проверку." = "Activa el Wi-Fi e inténtalo de nuevo.";
+"Проверка скорости заняла слишком много времени. Повторите попытку." = "La prueba de velocidad tardó demasiado. Inténtalo de nuevo.";
+"Не удалось измерить скорость Wi-Fi. Проверьте подключение и повторите попытку." = "No se pudo medir la velocidad Wi-Fi. Comprueba la conexión e inténtalo de nuevo.";
+"Начало проверки скорости Wi-Fi" = "Inicio de la prueba de velocidad Wi-Fi";
+"Конец проверки скорости Wi-Fi" = "Fin de la prueba de velocidad Wi-Fi";
+
 /* Menus, recording controls, and dialogs */
 "Справка Wi-Fi Logger" = "Ayuda de Wi-Fi Logger";
 "Импорт имён точек доступа…" = "Importar nombres de puntos de acceso…";
@@ -18,8 +39,8 @@
 "Продолжить запись" = "Reanudar grabación";
 "Начать новую запись?" = "¿Iniciar una nueva grabación?";
 "После сброса исчезнут замеры, события и снимки модуляции." = "Al reiniciar la grabación se borrarán las mediciones, los eventos y las muestras de modulación.";
-"Чтобы сохранить всю историю, нажмите «Отмена», приостановите запись и выберите нужные пункты в меню «Сохранить CSV»." = "Para conservar todo el historial, haz clic en «Cancelar», pausa la grabación y elige las opciones correspondientes en «Guardar CSV».";
-"Чтобы сохранить всю историю, нажмите «Отмена», выберите нужные пункты в меню «Сохранить CSV»." = "Para conservar todo el historial, haz clic en «Cancelar» y elige las opciones correspondientes en «Guardar CSV».";
+"Чтобы сохранить замеры Wi-Fi и снимки модуляции, нажмите «Отмена», приостановите запись и выберите нужные пункты в меню «Сохранить CSV»." = "Para conservar las mediciones de Wi-Fi y las muestras de modulación, haz clic en «Cancelar», pausa la grabación y elige las opciones correspondientes en «Guardar CSV».";
+"Чтобы сохранить замеры Wi-Fi и снимки модуляции, нажмите «Отмена», выберите нужные пункты в меню «Сохранить CSV»." = "Para conservar las mediciones de Wi-Fi y las muestras de modulación, haz clic en «Cancelar» y elige las opciones correspondientes en «Guardar CSV».";
 "Отмена" = "Cancelar";
 "OK" = "Aceptar";
 "Сбросить и начать" = "Borrar e iniciar";
@@ -89,7 +110,7 @@
 "RSSI, дБм" = "RSSI, dBm";
 "Шум, дБм" = "Ruido, dBm";
 "SNR, дБ" = "SNR, dB";
-"Шум — пунктир; его шкала рассчитана для сигнала −67 дБм. Фактическое соотношение — SNR." = "La línea discontinua indica el ruido. Su escala toma como referencia una señal de −67 dBm. El SNR indica la relación medida entre señal y ruido.";
+"Шум показан пунктиром. Пороги качества шума рассчитаны для сигнала −67 дБм. Фактическое соотношение — SNR." = "La línea discontinua muestra el ruido. Los umbrales de calidad del ruido se calculan para una señal de −67 dBm. La SNR muestra la relación medida entre señal y ruido.";
 "Хороший" = "Bueno";
 "Допустимый" = "Aceptable";
 "Слабый" = "Débil";

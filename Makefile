@@ -2,6 +2,7 @@ APP := .build/WiFiLogger.app
 COMMAND := $(APP)/Contents/MacOS/wifi-logger
 GUI_APP := .build/WiFiLoggerGUI.app
 GUI_EXECUTABLE := $(GUI_APP)/Contents/MacOS/wifi-logger-app
+GUI_SWIFT_FLAGS := --scratch-path .build/gui-swift -Xswiftc -D -Xswiftc WIFI_LOGGER_GUI_BUILD
 GUI_ICON := .build/WiFiLogger.icns
 LOCALIZATIONS := ar bn en es fr hi id pt ru ur zh-Hans
 VERSION := $(shell /usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)
@@ -11,6 +12,7 @@ INSTALLER := dist/WiFi-Logger-$(VERSION)-macOS-arm64.pkg
 
 build: $(GUI_ICON)
 	swift build $(SWIFT_FLAGS) --product wifi-logger
+	swift build $(SWIFT_FLAGS) $(GUI_SWIFT_FLAGS) --product wifi-logger
 	@set -eu; \
 		resources="$(GUI_APP)/Contents/Resources"; \
 		mkdir -p "$$(dirname "$(GUI_APP)")"; \
@@ -29,10 +31,11 @@ build: $(GUI_ICON)
 		rm -rf "$$resources"/*.lproj; \
 		mv "$$staging"/*.lproj "$$resources/"
 	build_bin="$$(swift build $(SWIFT_FLAGS) --show-bin-path)" && \
+		gui_build_bin="$$(swift build $(SWIFT_FLAGS) $(GUI_SWIFT_FLAGS) --show-bin-path)" && \
 		mkdir -p "$(APP)/Contents/MacOS" "$(GUI_APP)/Contents/MacOS" && \
 		cp "$$build_bin/wifi-logger" "$(COMMAND).next" && \
 		mv -f "$(COMMAND).next" "$(COMMAND)" && \
-		cp "$$build_bin/wifi-logger" "$(GUI_EXECUTABLE).next" && \
+		cp "$$gui_build_bin/wifi-logger" "$(GUI_EXECUTABLE).next" && \
 		mv -f "$(GUI_EXECUTABLE).next" "$(GUI_EXECUTABLE)"
 	rm -f "$(APP)/Contents/MacOS/wifi-logger-app"
 	cp Resources/Info.plist "$(APP)/Contents/Info.plist"

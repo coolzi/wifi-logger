@@ -1,2 +1,3 @@
 "NSLocationUsageDescription" = "WiFi Logger использует это разрешение для чтения имени сети Wi-Fi и идентификатора точки доступа.";
 "NSLocationWhenInUseUsageDescription" = "WiFi Logger использует это разрешение для чтения имени сети Wi-Fi и идентификатора точки доступа.";
+"NSLocalNetworkUsageDescription" = "WiFi Logger измеряет задержку до шлюза Wi-Fi во время записи.";

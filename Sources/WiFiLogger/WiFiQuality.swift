@@ -62,21 +62,4 @@ enum WiFiQualityMetric {
         }
         return self == .snr && quality == .poor ? String(localized: "Низкий") : quality.label
     }
-
-    func gradient(in bounds: ClosedRange<Double>) -> LinearGradient {
-        let span = bounds.upperBound - bounds.lowerBound
-        var previous = quality(for: bounds.lowerBound) ?? .poor
-        var stops = [Gradient.Stop(color: previous.color, location: 0)]
-        for threshold in thresholds.sorted(by: { $0.minimum < $1.minimum })
-            where threshold.minimum > bounds.lowerBound && threshold.minimum < bounds.upperBound {
-            let position = (threshold.minimum - bounds.lowerBound) / span
-            let next = quality(for: threshold.minimum.nextUp) ?? .poor
-            // Paired stops change color at the threshold, without inventing intermediate levels.
-            stops.append(.init(color: previous.color, location: position))
-            stops.append(.init(color: next.color, location: position))
-            previous = next
-        }
-        stops.append(.init(color: previous.color, location: 1))
-        return LinearGradient(stops: stops, startPoint: .bottom, endPoint: .top)
-    }
 }

@@ -1,2 +1,3 @@
 "NSLocationUsageDescription" = "O Wi-Fi Logger usa o acesso à localização para ler o nome da rede Wi-Fi (SSID) e o identificador do ponto de acesso (BSSID).";
 "NSLocationWhenInUseUsageDescription" = "O Wi-Fi Logger usa o acesso à localização para ler o nome da rede Wi-Fi (SSID) e o identificador do ponto de acesso (BSSID).";
+"NSLocalNetworkUsageDescription" = "O Wi-Fi Logger mede o tempo de ida e volta até o gateway Wi-Fi durante a gravação.";

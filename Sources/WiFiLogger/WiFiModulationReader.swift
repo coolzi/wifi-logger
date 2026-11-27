@@ -96,7 +96,10 @@ struct WiFiDiagnosticCommand: Sendable {
 
     typealias ReadError = WiFiModulationReader.ReadError
 
-    func capture(additionalArguments: [String] = []) throws -> Data {
+    func capture(additionalArguments: [String] = [], acceptedExitCodes: [Int32] = [0],
+                 includeStandardError: Bool = false, isCancelled: () -> Bool = { false },
+                 onStart: () -> Void = {}) throws -> Data {
+        if isCancelled() { throw CancellationError() }
         let pipe = Pipe()
         let reader = pipe.fileHandleForReading
         let writer = pipe.fileHandleForWriting
@@ -106,7 +109,8 @@ struct WiFiDiagnosticCommand: Sendable {
         let fd = reader.fileDescriptor
         if fcntl(fd, F_SETFL, O_NONBLOCK) == -1 { throw ReadError.systemCallFailed(errno) }
         let deadline = ContinuousClock.now + timeout
-        let pid = try spawn(stdout: writer.fileDescriptor, arguments: arguments + additionalArguments)
+        let pid = try spawn(stdout: writer.fileDescriptor, arguments: arguments + additionalArguments,
+                            includeStandardError: includeStandardError)
         var needsReaping = true
         defer {
             if needsReaping {
@@ -115,12 +119,14 @@ struct WiFiDiagnosticCommand: Sendable {
                 while waitpid(pid, nil, 0) == -1 && errno == EINTR {}
             }
         }
+        onStart()
         try writer.close()
 
         var output = Data()
         var buffer = [UInt8](repeating: 0, count: 16_384)
         var stdout = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
         while ContinuousClock.now < deadline {
+            if isCancelled() { throw CancellationError() }
             if stdout.fd >= 0 {
                 let count = buffer.withUnsafeMutableBytes { Darwin.read(fd, $0.baseAddress, $0.count) }
                 if count > 0 {
@@ -140,7 +146,10 @@ struct WiFiDiagnosticCommand: Sendable {
                 let waited = waitpid(pid, &status, WNOHANG)
                 if waited == pid {
                     needsReaping = false
-                    guard status == 0 else { throw ReadError.commandFailed }
+                    // Darwin stores the normal exit code in the high byte.
+                    guard status & 0x7f == 0, acceptedExitCodes.contains((status >> 8) & 0xff) else {
+                        throw ReadError.commandFailed
+                    }
                     return output
                 }
                 if waited == -1 && errno != EINTR {
@@ -155,13 +164,17 @@ struct WiFiDiagnosticCommand: Sendable {
         throw ReadError.timedOut
     }
 
-    private func spawn(stdout: Int32, arguments: [String]) throws -> pid_t {
+    private func spawn(stdout: Int32, arguments: [String], includeStandardError: Bool) throws -> pid_t {
         var actions: posix_spawn_file_actions_t?
         try check(posix_spawn_file_actions_init(&actions))
         defer { posix_spawn_file_actions_destroy(&actions) }
         try check(posix_spawn_file_actions_adddup2(&actions, stdout, STDOUT_FILENO))
         try check(posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0))
-        try check(posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, "/dev/null", O_WRONLY, 0))
+        if includeStandardError {
+            try check(posix_spawn_file_actions_adddup2(&actions, stdout, STDERR_FILENO))
+        } else {
+            try check(posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, "/dev/null", O_WRONLY, 0))
+        }
 
         var attributes: posix_spawnattr_t?
         try check(posix_spawnattr_init(&attributes))

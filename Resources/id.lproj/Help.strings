@@ -22,7 +22,8 @@
 
 /* Signal and outages */
 "Понять сигнал и обрывы" = "Pahami sinyal dan gangguan koneksi";
-"RSSI — уровень сигнала. Значение −55 дБм означает более сильный сигнал, чем −70 дБм. Чем выше SNR, тем лучше сигнал различим на фоне шума. В режимах **«Сигнал и шум»** и **SNR** пороги качества доступны под графиком в разделе **«Как читать цвета»**." = "RSSI mengukur kekuatan sinyal yang diterima. Nilai −55 dBm menunjukkan sinyal yang lebih kuat daripada −70 dBm. Makin tinggi SNR, makin jelas sinyal dibandingkan dengan derau. Pada tampilan **Sinyal dan Derau** dan **SNR**, lihat ambang kualitas di bagian **Arti Warna** di bawah grafik.";
+"В разделе **«Графики»** включите нужные показатели. RSSI и шум читаются по левой шкале. Справа можно показать RTT, SNR или PHY-скорость. Курсор и диапазон времени общие." = "Di bagian **Grafik**, aktifkan metrik yang ingin Anda lihat. RSSI dan derau menggunakan skala kiri. Skala kanan menampilkan RTT, SNR, atau laju PHY. Grafik menggunakan satu kursor dan rentang waktu yang sama.";
+"RSSI — уровень сигнала. Значение −55 дБм означает более сильный сигнал, чем −70 дБм. Чем выше SNR, тем лучше сигнал различим на фоне шума. Пороги качества доступны под графиком в разделе **«Как читать цвета»**." = "RSSI mengukur kekuatan sinyal yang diterima. Nilai −55 dBm menunjukkan sinyal yang lebih kuat dari −70 dBm. Semakin tinggi SNR, semakin jelas sinyal dibandingkan derau. Lihat ambang kualitas di **Memahami warna** di bawah grafik.";
 "В **«Событиях»** видны обрывы и восстановления связи, изменения номера, диапазона или ширины канала. Приложение отмечает смену точки доступа, когда у соседних замеров подключения совпадает SSID и меняется BSSID." = "**Peristiwa** mencantumkan koneksi yang terputus dan pulih, serta perubahan nomor, pita frekuensi, atau lebar kanal. Aplikasi mencatat pergantian titik akses jika dua pengukuran berturut-turut dalam keadaan terhubung memiliki SSID yang sama dan BSSID yang berbeda.";
 
 /* Modulation */
@@ -35,7 +36,8 @@
 /* Export */
 "Сохранить запись" = "Simpan rekaman";
 "В окне записи откройте **«Сохранить CSV»**. Пункты **«Замеры Wi-Fi…»** и **«Снимки модуляции…»** сохраняют данные в отдельные файлы. Экспорт работает во время записи. В файл попадут данные, накопленные к моменту подтверждения сохранения." = "Di jendela perekaman, buka **Simpan CSV**. **Pengukuran Wi-Fi…** dan **Cuplikan Modulasi…** menyimpan data masing-masing ke file terpisah. Anda dapat mengekspor sambil merekam. Setiap file berisi data yang terkumpul hingga Anda mengonfirmasi penyimpanan.";
-"Чтобы сохранить всю историю перед закрытием окна или сбросом через **«Новая запись…»**, приостановите запись и сохраните каждый доступный CSV. Пауза фиксирует конец записи для обоих файлов. Время последнего замера и последнего снимка может различаться." = "Untuk menyimpan seluruh riwayat sebelum menutup jendela atau memilih **Rekaman Baru…**, klik **Jeda Perekaman** dan simpan semua CSV yang tersedia. Menjeda perekaman menetapkan akhir rekaman untuk kedua file. Waktu pengukuran terakhir dan cuplikan terakhir bisa berbeda.";
+"Чтобы сохранить замеры Wi-Fi и снимки модуляции перед закрытием окна или сбросом через **«Новая запись…»**, приостановите запись и сохраните каждый доступный CSV. Пауза фиксирует конец записи для обоих файлов. Время последнего замера и последнего снимка может различаться." = "Untuk menyimpan pengukuran Wi-Fi dan cuplikan modulasi sebelum menutup jendela atau memilih **Rekaman Baru…**, klik **Jeda Perekaman** dan simpan semua CSV yang tersedia. Menjeda perekaman menetapkan akhir rekaman untuk kedua file. Waktu pengukuran terakhir dan cuplikan terakhir bisa berbeda.";
+"Замеры шлюза доступны до сброса записи или закрытия окна." = "Pengukuran gateway tersedia hingga Anda mereset rekaman atau menutup jendela.";
 
 /* Network names and location permission */
 "Показать имя сети и BSSID" = "Tampilkan nama jaringan dan BSSID";

@@ -1,2 +1,3 @@
 "NSLocationUsageDescription" = "Wi-Fi Logger مقام تک رسائی استعمال کر کے Wi-Fi نیٹ ورک کا نام (SSID) اور ایکسیس پوائنٹ کی شناخت (BSSID) پڑھتا ہے۔";
 "NSLocationWhenInUseUsageDescription" = "Wi-Fi Logger مقام تک رسائی استعمال کر کے Wi-Fi نیٹ ورک کا نام (SSID) اور ایکسیس پوائنٹ کی شناخت (BSSID) پڑھتا ہے۔";
+"NSLocalNetworkUsageDescription" = "Wi-Fi Logger ریکارڈنگ کے دوران Wi-Fi گیٹ وے تک آنے جانے کا وقت ماپتا ہے۔";
